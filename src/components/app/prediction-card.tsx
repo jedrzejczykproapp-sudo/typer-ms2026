@@ -71,12 +71,12 @@ function ScoreInput({
 
 function TeamFlag({ teamName }: { teamName: string }) {
     const url = getFlagUrl(teamName);
-    if (!url) return <div className="size-16 rounded-xl bg-secondary" />;
+    if (!url) return <div className="size-8 rounded-lg bg-secondary" />;
     return (
         <img
             src={url}
             alt={teamName}
-            className="size-16 rounded-xl object-cover"
+            className="size-8 rounded-lg object-cover"
             onError={(e) => {
                 e.currentTarget.style.display = "none";
             }}
@@ -170,17 +170,17 @@ export function PredictionCard({ match, groupId, prediction, odds }: PredictionC
                     )}
 
                     {/* Teams row */}
-                    <div className="flex items-center justify-between gap-3">
-                        <div className="flex flex-1 flex-col items-center gap-1.5">
+                    <div className="flex items-center gap-3">
+                        <div className="flex flex-1 items-center justify-center gap-2.5">
                             <TeamFlag teamName={match.home_team} />
-                            <span className="text-center text-sm font-semibold leading-tight text-primary">
+                            <span className="text-sm font-semibold leading-tight text-primary">
                                 {match.home_team}
                             </span>
                         </div>
-                        <span className="shrink-0 text-sm font-medium text-tertiary">vs</span>
-                        <div className="flex flex-1 flex-col items-center gap-1.5">
+                        <span className="shrink-0 text-xs font-medium text-tertiary">vs</span>
+                        <div className="flex flex-1 items-center justify-center gap-2.5">
                             <TeamFlag teamName={match.away_team} />
-                            <span className="text-center text-sm font-semibold leading-tight text-primary">
+                            <span className="text-sm font-semibold leading-tight text-primary">
                                 {match.away_team}
                             </span>
                         </div>

@@ -19,14 +19,14 @@ function PredictionCardSkeleton() {
             </div>
 
             {/* Teams row */}
-            <div className="flex items-center justify-between gap-3">
-                <div className="flex flex-1 flex-col items-center gap-1.5">
-                    <Skel className="size-16 rounded-xl" />
+            <div className="flex items-center gap-3">
+                <div className="flex flex-1 items-center justify-center gap-2.5">
+                    <Skel className="size-8 shrink-0 rounded-lg" />
                     <Skel className="h-4 w-20" />
                 </div>
-                <Skel className="h-4 w-6 shrink-0" />
-                <div className="flex flex-1 flex-col items-center gap-1.5">
-                    <Skel className="size-16 rounded-xl" />
+                <Skel className="h-3 w-4 shrink-0" />
+                <div className="flex flex-1 items-center justify-center gap-2.5">
+                    <Skel className="size-8 shrink-0 rounded-lg" />
                     <Skel className="h-4 w-20" />
                 </div>
             </div>
