@@ -22,7 +22,7 @@ const stageLabels: Record<string, string> = {
 function groupMatchesByStage(matches: Match[]) {
     const grouped: Record<string, Match[]> = {};
     for (const match of matches) {
-        const key = match.stage === "group" ? `group_${match.group_name}` : match.stage;
+        const key = match.stage === "group" ? `matchday_${match.matchday}` : match.stage;
         if (!grouped[key]) grouped[key] = [];
         grouped[key].push(match);
     }
@@ -118,11 +118,15 @@ async function TypowaniaTab({ groupId, userId }: { groupId: string; userId: stri
     const grouped = groupMatchesByStage(matches);
 
     const sortedKeys = Object.keys(grouped).sort((a, b) => {
-        const stageA = a.startsWith("group_") ? "group" : a;
-        const stageB = b.startsWith("group_") ? "group" : b;
+        const stageA = a.startsWith("matchday_") ? "group" : a;
+        const stageB = b.startsWith("matchday_") ? "group" : b;
         const orderA = stageOrder.indexOf(stageA as any);
         const orderB = stageOrder.indexOf(stageB as any);
         if (orderA !== orderB) return orderA - orderB;
+        // sort matchday_1 < matchday_2 < matchday_3 numerically
+        if (a.startsWith("matchday_") && b.startsWith("matchday_")) {
+            return parseInt(a.split("_")[1]) - parseInt(b.split("_")[1]);
+        }
         return a.localeCompare(b);
     });
 
@@ -130,9 +134,9 @@ async function TypowaniaTab({ groupId, userId }: { groupId: string; userId: stri
         <div className="flex flex-col gap-8">
             {sortedKeys.map((key) => {
                 const sectionMatches = grouped[key];
-                const isGroup = key.startsWith("group_");
-                const groupLetter = isGroup ? key.replace("group_", "") : null;
-                const label = isGroup ? `Grupa ${groupLetter}` : stageLabels[key];
+                const isMatchday = key.startsWith("matchday_");
+                const matchdayNum = isMatchday ? key.split("_")[1] : null;
+                const label = isMatchday ? `Kolejka ${matchdayNum}` : stageLabels[key];
 
                 return (
                     <section key={key}>
