@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { CalendarCheck01, ChevronRight, Users01 } from "@untitledui/icons";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { StatsDashboard, type UserStats } from "@/components/app/stats-dashboard";
 import { getMatchesWithPredictions } from "@/actions/prediction-actions";
 import { getWcOdds } from "@/lib/odds";
 import { PredictionCard } from "@/components/app/prediction-card";
@@ -11,6 +12,7 @@ import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-ic
 import type { Match } from "@/types/database";
 
 const TABS = [
+    { key: "statystyki", label: "Statystyki" },
     { key: "typowania", label: "Typowania" },
     { key: "grupy", label: "Grupy" },
 ] as const;
@@ -41,7 +43,7 @@ export default async function KontoPage({
 }: {
     searchParams: Promise<{ tab?: string; group?: string }>;
 }) {
-    const { tab = "typowania", group: groupParam } = await searchParams;
+    const { tab = "statystyki", group: groupParam } = await searchParams;
 
     const supabase = await createClient();
     const {
@@ -85,7 +87,9 @@ export default async function KontoPage({
                 ))}
             </div>
 
-            {tab === "typowania" ? (
+            {tab === "statystyki" ? (
+                <StatystykiTab userId={user.id} groups={groups} />
+            ) : tab === "typowania" ? (
                 <TypowaniaTab groups={groups} activeGroup={activeGroup} />
             ) : (
                 <GrupyTab groups={groups} />
@@ -208,6 +212,36 @@ function EmptyState({ icon, title, description }: { icon: Parameters<typeof Feat
             <CreateGroupModal />
         </div>
     );
+}
+
+// ─── Statystyki tab ───────────────────────────────────────────────────────────
+
+async function StatystykiTab({ userId, groups }: { userId: string; groups: { id: string }[] }) {
+    const supabase = await createClient();
+
+    const { data: predictions } = await supabase
+        .from("predictions")
+        .select("points")
+        .eq("user_id", userId);
+
+    const preds = predictions ?? [];
+    const total   = preds.length;
+    const exact   = preds.filter((p) => p.points === 3).length;
+    const correct = preds.filter((p) => p.points === 1).length;
+    const wrong   = preds.filter((p) => p.points === 0).length;
+    const pending = preds.filter((p) => p.points === null).length;
+
+    const stats: UserStats = {
+        total,
+        exact,
+        correct,
+        wrong,
+        pending,
+        totalPoints: exact * 3 + correct * 1,
+        groups: groups.length,
+    };
+
+    return <StatsDashboard stats={stats} />;
 }
 
 // ─── Grupy tab ────────────────────────────────────────────────────────────────
