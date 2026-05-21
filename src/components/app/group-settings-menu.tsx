@@ -346,17 +346,17 @@ export function GroupSettingsMenu({
                             {sheet !== "options" && (
                                 <button
                                     onClick={() => setSheet("options")}
-                                    className="flex items-center gap-1 text-sm text-tertiary hover:text-secondary"
+                                    className="flex items-center gap-1 rounded-lg p-1 text-tertiary hover:bg-secondary hover:text-secondary"
                                 >
-                                    <ChevronLeft className="size-4" />
+                                    <ChevronLeft className="size-6" />
                                 </button>
                             )}
                             <span className="flex-1 text-sm font-semibold text-primary">{sheetTitles[sheet]}</span>
                             <button
                                 onClick={close}
-                                className="rounded-lg p-1 text-fg-quaternary hover:bg-secondary hover:text-fg-tertiary"
+                                className="rounded-lg p-1.5 text-fg-quaternary hover:bg-secondary hover:text-fg-tertiary"
                             >
-                                <X className="size-4" />
+                                <X className="size-5" />
                             </button>
                         </div>
 
@@ -477,12 +477,12 @@ export function GroupSettingsMenu({
                                                         <button
                                                             onClick={() => setConfirmRemoveId(member.user_id)}
                                                             className={cx(
-                                                                "rounded-lg p-1.5 text-fg-quaternary transition",
+                                                                "rounded-lg p-2 text-fg-quaternary transition",
                                                                 "hover:bg-error-primary hover:text-error-primary",
                                                             )}
                                                             aria-label={`Usuń ${name}`}
                                                         >
-                                                            <Trash01 className="size-4" />
+                                                            <Trash01 className="size-5" />
                                                         </button>
                                                     )}
                                                 </div>
