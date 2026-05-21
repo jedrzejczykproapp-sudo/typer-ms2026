@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { Check, Lock01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { upsertPrediction } from "@/actions/prediction-actions";
+import { getFlagUrl } from "@/lib/flags";
 import type { Match, Prediction } from "@/types/database";
 import type { MatchOdds } from "@/lib/odds";
 import { cx } from "@/utils/cx";
@@ -68,6 +69,21 @@ function ScoreInput({
     );
 }
 
+function TeamFlag({ teamName }: { teamName: string }) {
+    const url = getFlagUrl(teamName);
+    if (!url) return <div className="size-16 rounded-xl bg-secondary" />;
+    return (
+        <img
+            src={url}
+            alt={teamName}
+            className="size-16 rounded-xl object-cover"
+            onError={(e) => {
+                e.currentTarget.style.display = "none";
+            }}
+        />
+    );
+}
+
 export function PredictionCard({ match, groupId, prediction, odds }: PredictionCardProps) {
     const isLocked = match.status !== "upcoming";
     const isFinished = match.status === "finished";
@@ -79,7 +95,6 @@ export function PredictionCard({ match, groupId, prediction, odds }: PredictionC
     const [saved, setSaved] = useState(false);
     const [isPending, startTransition] = useTransition();
 
-    // Sync state when server re-renders with fresh prediction data (after revalidatePath)
     useEffect(() => {
         if (prediction && !saved) {
             setLocalPrediction(prediction);
@@ -117,12 +132,12 @@ export function PredictionCard({ match, groupId, prediction, odds }: PredictionC
     return (
         <div
             className={cx(
-                "flex flex-col gap-3 rounded-xl border bg-primary p-4 transition",
+                "flex flex-col gap-4 rounded-xl border bg-primary p-4 transition",
                 isFinished ? "border-secondary" : "border-secondary shadow-xs",
                 isLocked && "opacity-80",
             )}
         >
-            {/* Header row */}
+            {/* Header */}
             <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-tertiary">
                     {match.group_name ? `Grupa ${match.group_name} · Kolejka ${match.matchday}` : stageLabels[match.stage]}
@@ -134,41 +149,44 @@ export function PredictionCard({ match, groupId, prediction, odds }: PredictionC
                 <p className="py-2 text-center text-sm text-tertiary">Mecz do ustalenia po fazie grupowej</p>
             ) : (
                 <>
-                    {/* Row 1: scores / inputs */}
-                    <div className="flex items-center justify-center gap-3">
-                        {isFinished ? (
-                            <div className="flex items-center gap-3">
-                                <span className="text-3xl font-bold text-primary">{match.home_score}</span>
-                                <span className="text-xl text-tertiary">:</span>
-                                <span className="text-3xl font-bold text-primary">{match.away_score}</span>
-                            </div>
-                        ) : isLocked ? (
-                            <div className="flex items-center gap-1.5 text-tertiary">
-                                <Lock01 className="size-4" />
-                                <span className="text-sm">W trakcie</span>
-                            </div>
-                        ) : (
-                            <div className="flex items-center gap-3">
-                                <ScoreInput value={homeScore} onChange={setHomeScore} disabled={isLocked} />
-                                <span className="text-xl font-bold text-tertiary">:</span>
-                                <ScoreInput value={awayScore} onChange={setAwayScore} disabled={isLocked} />
-                            </div>
-                        )}
+                    {/* Score row */}
+                    {isFinished ? (
+                        <div className="flex items-center justify-between px-2">
+                            <span className="text-4xl font-bold tabular-nums text-primary">{match.home_score}</span>
+                            <span className="text-2xl text-tertiary">:</span>
+                            <span className="text-4xl font-bold tabular-nums text-primary">{match.away_score}</span>
+                        </div>
+                    ) : isLocked ? (
+                        <div className="flex items-center justify-center gap-1.5 py-1 text-tertiary">
+                            <Lock01 className="size-4" />
+                            <span className="text-sm">W trakcie</span>
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-between">
+                            <ScoreInput value={homeScore} onChange={setHomeScore} disabled={false} />
+                            <span className="text-2xl font-bold text-tertiary">:</span>
+                            <ScoreInput value={awayScore} onChange={setAwayScore} disabled={false} />
+                        </div>
+                    )}
+
+                    {/* Teams row */}
+                    <div className="flex items-center justify-between gap-3">
+                        <div className="flex flex-1 flex-col items-center gap-1.5">
+                            <TeamFlag teamName={match.home_team} />
+                            <span className="text-center text-sm font-semibold leading-tight text-primary">
+                                {match.home_team}
+                            </span>
+                        </div>
+                        <span className="shrink-0 text-sm font-medium text-tertiary">vs</span>
+                        <div className="flex flex-1 flex-col items-center gap-1.5">
+                            <TeamFlag teamName={match.away_team} />
+                            <span className="text-center text-sm font-semibold leading-tight text-primary">
+                                {match.away_team}
+                            </span>
+                        </div>
                     </div>
 
-                    {/* Row 2: flag + name */}
-                    <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                            <span className="text-2xl">{match.home_flag}</span>
-                            <span className="text-sm font-semibold leading-tight text-primary">{match.home_team}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold leading-tight text-primary">{match.away_team}</span>
-                            <span className="text-2xl">{match.away_flag}</span>
-                        </div>
-                    </div>
-
-                    {/* Points after finished */}
+                    {/* Points badge after finished */}
                     {isFinished && hasPrediction && (
                         <div className="flex flex-col items-center gap-1">
                             <div
