@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Check, Lock01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { upsertPrediction } from "@/actions/prediction-actions";
@@ -78,6 +78,15 @@ export function PredictionCard({ match, groupId, prediction, odds }: PredictionC
     const [localPrediction, setLocalPrediction] = useState(prediction);
     const [saved, setSaved] = useState(false);
     const [isPending, startTransition] = useTransition();
+
+    // Sync state when server re-renders with fresh prediction data (after revalidatePath)
+    useEffect(() => {
+        if (prediction && !saved) {
+            setLocalPrediction(prediction);
+            setHomeScore(prediction.predicted_home);
+            setAwayScore(prediction.predicted_away);
+        }
+    }, [prediction?.updated_at]); // eslint-disable-line react-hooks/exhaustive-deps
 
     function handleSave() {
         startTransition(async () => {

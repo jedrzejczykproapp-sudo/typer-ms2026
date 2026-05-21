@@ -56,16 +56,23 @@ export async function getLeaderboard(groupId: string): Promise<LeaderboardEntry[
 
     const { data: members } = await supabase
         .from("group_members")
-        .select("user_id, profiles(id, display_name)")
+        .select("user_id")
         .eq("group_id", groupId);
 
     if (!members?.length) return [];
 
-    const { data: predictions } = await supabase.from("predictions").select("*").eq("group_id", groupId);
+    const userIds = members.map((m) => m.user_id);
 
+    const [{ data: profiles }, { data: predictions }] = await Promise.all([
+        supabase.from("profiles").select("id, display_name").in("id", userIds),
+        supabase.from("predictions").select("*").eq("group_id", groupId),
+    ]);
+
+    const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
     const preds = predictions ?? [];
 
     const stats = members.map((member) => {
+        const profile = profileMap.get(member.user_id);
         const userPreds = preds.filter((p) => p.user_id === member.user_id && p.points !== null);
         const totalPoints = userPreds.reduce((sum, p) => sum + (p.points ?? 0), 0);
         const exactScores = userPreds.filter((p) => p.points === 3).length;
@@ -73,7 +80,7 @@ export async function getLeaderboard(groupId: string): Promise<LeaderboardEntry[
 
         return {
             user_id: member.user_id,
-            display_name: (member.profiles as any)?.display_name ?? null,
+            display_name: profile?.display_name ?? null,
             total_points: totalPoints,
             exact_scores: exactScores,
             correct_results: correctResults,
