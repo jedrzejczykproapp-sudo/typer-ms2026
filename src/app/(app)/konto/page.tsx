@@ -127,7 +127,11 @@ async function TypowaniaTab({
         getWcOdds(),
     ]);
 
-    const grouped = groupMatchesByStage(matches);
+    // Filter to today's matches only (compare YYYY-MM-DD in UTC)
+    const todayUtc = new Date().toISOString().slice(0, 10);
+    const todayMatches = matches.filter((m) => m.match_date.slice(0, 10) === todayUtc);
+
+    const grouped = groupMatchesByStage(todayMatches);
     const sortedKeys = Object.keys(grouped).sort((a, b) => {
         const stageA = a.startsWith("matchday_") ? "group" : a;
         const stageB = b.startsWith("matchday_") ? "group" : b;
@@ -175,34 +179,48 @@ async function TypowaniaTab({
                 </Link>
             </div>
 
-            {/* Matches */}
-            <div className="flex flex-col gap-8">
-                {sortedKeys.map((key) => {
-                    const sectionMatches = grouped[key];
-                    const isMatchday = key.startsWith("matchday_");
-                    const matchdayNum = isMatchday ? key.split("_")[1] : null;
-                    const label = isMatchday ? `Kolejka ${matchdayNum}` : stageLabels[key];
+            {/* Matches or empty state */}
+            {sortedKeys.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 rounded-xl border border-secondary bg-primary py-14 text-center">
+                    <p className="text-sm font-semibold text-primary">Brak meczów na dziś</p>
+                    <p className="text-xs text-tertiary">Wróć jutro lub sprawdź wszystkie typowania w grupie.</p>
+                    <Link
+                        href={`/grupy/${activeGroup.id}`}
+                        className="mt-2 flex items-center gap-1 text-xs text-brand-secondary hover:underline"
+                    >
+                        Przejdź do grupy
+                        <ChevronRight className="size-3.5" />
+                    </Link>
+                </div>
+            ) : (
+                <div className="flex flex-col gap-8">
+                    {sortedKeys.map((key) => {
+                        const sectionMatches = grouped[key];
+                        const isMatchday = key.startsWith("matchday_");
+                        const matchdayNum = isMatchday ? key.split("_")[1] : null;
+                        const label = isMatchday ? `Kolejka ${matchdayNum}` : stageLabels[key];
 
-                    return (
-                        <section key={key}>
-                            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-tertiary">
-                                {label}
-                            </h2>
-                            <div className="flex flex-col gap-3">
-                                {sectionMatches.map((match) => (
-                                    <PredictionCard
-                                        key={match.id}
-                                        match={match}
-                                        groupId={activeGroup.id}
-                                        prediction={predictions.get(match.id)}
-                                        odds={oddsMap.get(`${match.home_team}|${match.away_team}`)}
-                                    />
-                                ))}
-                            </div>
-                        </section>
-                    );
-                })}
-            </div>
+                        return (
+                            <section key={key}>
+                                <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-tertiary">
+                                    {label}
+                                </h2>
+                                <div className="flex flex-col gap-3">
+                                    {sectionMatches.map((match) => (
+                                        <PredictionCard
+                                            key={match.id}
+                                            match={match}
+                                            groupId={activeGroup.id}
+                                            prediction={predictions.get(match.id)}
+                                            odds={oddsMap.get(`${match.home_team}|${match.away_team}`)}
+                                        />
+                                    ))}
+                                </div>
+                            </section>
+                        );
+                    })}
+                </div>
+            )}
         </div>
     );
 }
