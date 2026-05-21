@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
-import { Check, Lock01 } from "@untitledui/icons";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { Check, ChevronDown, ChevronUp, Lock01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
+import { Avatar } from "@/components/base/avatar/avatar";
 import { upsertPrediction } from "@/actions/prediction-actions";
 import { getFlagUrl, getTeamNamePl } from "@/lib/flags";
+import { createClient } from "@/lib/supabase/client";
 import type { Match, Prediction } from "@/types/database";
 import type { MatchOdds } from "@/lib/odds";
 import { cx } from "@/utils/cx";
@@ -36,6 +38,49 @@ function formatMatchDate(dateStr: string) {
         minute: "2-digit",
     }).format(date);
 }
+
+function calcLiveState(matchDate: string): { minute: number; isHalftime: boolean; progress: number } {
+    const start = new Date(matchDate).getTime();
+    const elapsed = (Date.now() - start) / 60000; // elapsed minutes
+
+    let minute: number;
+    let isHalftime: boolean;
+    let progress: number;
+
+    if (elapsed <= 45) {
+        minute = Math.max(1, Math.floor(elapsed));
+        isHalftime = false;
+        progress = (elapsed / 90) * 100;
+    } else if (elapsed <= 60) {
+        // Approximate halftime window (~15 min break)
+        minute = 45;
+        isHalftime = true;
+        progress = 50;
+    } else {
+        // Second half (subtract ~15 min halftime)
+        const secondHalfMin = elapsed - 15;
+        minute = Math.min(Math.floor(secondHalfMin), 90);
+        isHalftime = false;
+        progress = Math.min((secondHalfMin / 90) * 100, 100);
+    }
+
+    return { minute, isHalftime, progress };
+}
+
+function calcProvisionalPoints(ph: number, pa: number, ah: number, aa: number): number {
+    if (ph === ah && pa === aa) return 3;
+    if (Math.sign(ph - pa) === Math.sign(ah - aa)) return 1;
+    return 0;
+}
+
+type MemberPrediction = {
+    user_id: string;
+    display_name: string | null;
+    avatar_url: string | null;
+    predicted_home: number;
+    predicted_away: number;
+    points: number | null;
+};
 
 function ScoreInput({
     value,
@@ -87,6 +132,7 @@ function TeamFlag({ teamName }: { teamName: string }) {
 export function PredictionCard({ match, groupId, prediction, odds }: PredictionCardProps) {
     const isLocked = match.status !== "upcoming";
     const isFinished = match.status === "finished";
+    const isLive = match.status === "live";
     const isTbd = match.home_team === "TBD";
 
     const [homeScore, setHomeScore] = useState(prediction?.predicted_home ?? 0);
@@ -95,6 +141,17 @@ export function PredictionCard({ match, groupId, prediction, odds }: PredictionC
     const [saved, setSaved] = useState(false);
     const [isPending, startTransition] = useTransition();
 
+    // Live state
+    const [liveState, setLiveState] = useState(() =>
+        isLive ? calcLiveState(match.match_date) : null,
+    );
+
+    // "Zobacz typy" expansion
+    const [isExpanded, setIsExpanded] = useState(false);
+    const [memberPreds, setMemberPreds] = useState<MemberPrediction[]>([]);
+    const [isLoadingPreds, setIsLoadingPreds] = useState(false);
+    const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
     useEffect(() => {
         if (prediction && !saved) {
             setLocalPrediction(prediction);
@@ -102,6 +159,76 @@ export function PredictionCard({ match, groupId, prediction, odds }: PredictionC
             setAwayScore(prediction.predicted_away);
         }
     }, [prediction?.updated_at]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Update live minute/progress every 30s
+    useEffect(() => {
+        if (!isLive) return;
+        const tick = () => setLiveState(calcLiveState(match.match_date));
+        tick();
+        const id = setInterval(tick, 30_000);
+        return () => clearInterval(id);
+    }, [isLive, match.match_date]);
+
+    const fetchMemberPredictions = useCallback(async () => {
+        setIsLoadingPreds(true);
+        const supabase = createClient();
+
+        const { data: preds } = await supabase
+            .from("predictions")
+            .select("user_id, predicted_home, predicted_away, points")
+            .eq("match_id", match.id)
+            .eq("group_id", groupId);
+
+        if (!preds?.length) {
+            setMemberPreds([]);
+            setIsLoadingPreds(false);
+            return;
+        }
+
+        const userIds = preds.map((p) => p.user_id);
+        const { data: profiles } = await supabase
+            .from("profiles")
+            .select("id, display_name, avatar_url")
+            .in("id", userIds);
+
+        const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
+
+        const result: MemberPrediction[] = preds.map((p) => ({
+            user_id: p.user_id,
+            display_name: profileMap.get(p.user_id)?.display_name ?? null,
+            avatar_url: profileMap.get(p.user_id)?.avatar_url ?? null,
+            predicted_home: p.predicted_home,
+            predicted_away: p.predicted_away,
+            points: p.points,
+        }));
+
+        setMemberPreds(result);
+        setIsLoadingPreds(false);
+    }, [match.id, groupId]);
+
+    // Fetch predictions when expanded; poll every 30s during live
+    useEffect(() => {
+        if (!isExpanded) {
+            if (pollRef.current) {
+                clearInterval(pollRef.current);
+                pollRef.current = null;
+            }
+            return;
+        }
+
+        fetchMemberPredictions();
+
+        if (isLive) {
+            pollRef.current = setInterval(fetchMemberPredictions, 30_000);
+        }
+
+        return () => {
+            if (pollRef.current) {
+                clearInterval(pollRef.current);
+                pollRef.current = null;
+            }
+        };
+    }, [isExpanded, isLive, fetchMemberPredictions]);
 
     function handleSave() {
         startTransition(async () => {
@@ -129,27 +256,52 @@ export function PredictionCard({ match, groupId, prediction, odds }: PredictionC
         ? homeScore !== localPrediction.predicted_home || awayScore !== localPrediction.predicted_away
         : true;
 
+    const isSavedDisabled = hasPrediction && !hasChanged && !saved;
+
+    // Sorted member predictions for display
+    const sortedMemberPreds = [...memberPreds].sort((a, b) => {
+        const getDisplayPoints = (p: MemberPrediction) => {
+            if (isFinished) return p.points ?? -1;
+            if (isLive && match.home_score !== null && match.away_score !== null) {
+                return calcProvisionalPoints(
+                    p.predicted_home, p.predicted_away,
+                    match.home_score!, match.away_score!,
+                );
+            }
+            return -1;
+        };
+        return getDisplayPoints(b) - getDisplayPoints(a);
+    });
+
     return (
         <div
             className={cx(
                 "flex flex-col gap-4 rounded-xl border bg-primary p-4 transition",
                 isFinished ? "border-secondary" : "border-secondary shadow-xs",
-                isLocked && "opacity-80",
+                isLocked && "opacity-90",
             )}
         >
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-tertiary">
-                    {match.group_name ? `Grupa ${match.group_name} · Kolejka ${match.matchday}` : stageLabels[match.stage]}
-                </span>
-                <span className="text-xs text-tertiary">{formatMatchDate(match.match_date)}</span>
+            <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-tertiary">
+                        {match.group_name ? `Grupa ${match.group_name} · Kolejka ${match.matchday}` : stageLabels[match.stage]}
+                    </span>
+                    {isLive && (
+                        <span className="flex shrink-0 items-center gap-1 rounded-full bg-error-primary px-1.5 py-0.5 text-xs font-bold text-error-primary">
+                            <span className="size-1.5 animate-pulse rounded-full bg-error-solid" />
+                            NA ŻYWO
+                        </span>
+                    )}
+                </div>
+                <span className="shrink-0 text-xs text-tertiary">{formatMatchDate(match.match_date)}</span>
             </div>
 
             {isTbd ? (
                 <p className="py-2 text-center text-sm text-tertiary">Mecz do ustalenia po fazie grupowej</p>
             ) : (
                 <>
-                    {/* Score row — same 3-col structure as teams row so columns align */}
+                    {/* Score row */}
                     {isFinished ? (
                         <div className="flex items-center gap-3">
                             <div className="flex flex-1 justify-center">
@@ -162,10 +314,39 @@ export function PredictionCard({ match, groupId, prediction, odds }: PredictionC
                                 <span className="text-4xl font-bold tabular-nums text-primary">{match.away_score}</span>
                             </div>
                         </div>
-                    ) : isLocked ? (
-                        <div className="flex items-center justify-center gap-1.5 py-1 text-tertiary">
-                            <Lock01 className="size-4" />
-                            <span className="text-sm">W trakcie</span>
+                    ) : isLive ? (
+                        <div className="flex flex-col gap-3">
+                            {/* Live score */}
+                            <div className="flex items-center gap-3">
+                                <div className="flex flex-1 justify-center">
+                                    <span className="text-4xl font-bold tabular-nums text-primary">
+                                        {match.home_score ?? 0}
+                                    </span>
+                                </div>
+                                <div className="flex w-8 shrink-0 justify-center">
+                                    <span className="text-2xl text-error-primary">:</span>
+                                </div>
+                                <div className="flex flex-1 justify-center">
+                                    <span className="text-4xl font-bold tabular-nums text-primary">
+                                        {match.away_score ?? 0}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Progress bar + minute */}
+                            {liveState && (
+                                <div className="flex flex-col gap-1.5">
+                                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                                        <div
+                                            className="h-full rounded-full bg-error-solid transition-all duration-1000"
+                                            style={{ width: `${liveState.progress}%` }}
+                                        />
+                                    </div>
+                                    <p className="text-center text-xs font-medium text-error-primary">
+                                        {liveState.isHalftime ? "Przerwa" : `${liveState.minute}'`}
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     ) : (
                         <div className="flex items-center gap-3">
@@ -181,7 +362,7 @@ export function PredictionCard({ match, groupId, prediction, odds }: PredictionC
                         </div>
                     )}
 
-                    {/* Teams row — same 3-col structure, flex-1 widths match score row exactly */}
+                    {/* Teams row */}
                     <div className="flex items-center gap-3">
                         <div className="flex flex-1 items-center justify-center gap-2.5">
                             <TeamFlag teamName={match.home_team} />
@@ -224,8 +405,8 @@ export function PredictionCard({ match, groupId, prediction, odds }: PredictionC
                 </>
             )}
 
-            {/* Odds row */}
-            {odds && !isTbd && (
+            {/* Odds row — upcoming only */}
+            {odds && !isTbd && !isLocked && (
                 <div className="flex items-center justify-center gap-2 border-t border-secondary pt-3">
                     <span className="text-xs text-tertiary">Kursy:</span>
                     <div className="flex gap-2">
@@ -243,19 +424,122 @@ export function PredictionCard({ match, groupId, prediction, odds }: PredictionC
                 </div>
             )}
 
+            {/* Save button — upcoming only */}
             {!isLocked && !isTbd && (
                 <Button
                     size="sm"
-                    color={saved ? "secondary" : "primary"}
+                    color={saved || isSavedDisabled ? "secondary" : "primary"}
                     isLoading={isPending}
                     showTextWhileLoading
                     onClick={handleSave}
-                    isDisabled={!hasChanged && hasPrediction}
-                    iconLeading={saved ? Check : undefined}
+                    isDisabled={isSavedDisabled || isPending}
+                    iconLeading={saved || isSavedDisabled ? Check : undefined}
                     className="w-full"
                 >
-                    {saved ? "Zapisano!" : hasPrediction && !hasChanged ? "Zapisane" : "Zapisz typ"}
+                    {saved ? "Zapisano!" : isSavedDisabled ? "Zapisane" : "Zapisz typ"}
                 </Button>
+            )}
+
+            {/* "Zobacz typy" button — live & finished */}
+            {isLocked && !isTbd && (
+                <div className="border-t border-secondary pt-1">
+                    <button
+                        type="button"
+                        onClick={() => setIsExpanded((v) => !v)}
+                        className="flex w-full items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-medium text-secondary transition hover:text-primary"
+                    >
+                        {isExpanded ? (
+                            <>
+                                Ukryj typy
+                                <ChevronUp className="size-4" />
+                            </>
+                        ) : (
+                            <>
+                                Zobacz typy
+                                <ChevronDown className="size-4" />
+                            </>
+                        )}
+                    </button>
+
+                    {/* Expanded predictions list */}
+                    {isExpanded && (
+                        <div className="mt-2 flex flex-col gap-1">
+                            {isLoadingPreds ? (
+                                <div className="flex flex-col gap-2 py-2">
+                                    {[1, 2, 3].map((i) => (
+                                        <div key={i} className="flex items-center gap-3">
+                                            <div className="size-7 animate-pulse rounded-full bg-secondary" />
+                                            <div className="h-3 flex-1 animate-pulse rounded-full bg-secondary" />
+                                            <div className="h-3 w-10 animate-pulse rounded-full bg-secondary" />
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : sortedMemberPreds.length === 0 ? (
+                                <p className="py-2 text-center text-xs text-quaternary">Brak typów w tej grupie</p>
+                            ) : (
+                                sortedMemberPreds.map((mp) => {
+                                    const isCurrentUser = mp.user_id === localPrediction?.user_id;
+                                    const inits = (mp.display_name ?? "?")
+                                        .split(" ")
+                                        .map((w) => w[0])
+                                        .join("")
+                                        .slice(0, 2)
+                                        .toUpperCase();
+
+                                    const displayPoints = isFinished
+                                        ? mp.points
+                                        : isLive && match.home_score !== null && match.away_score !== null
+                                          ? calcProvisionalPoints(
+                                                mp.predicted_home,
+                                                mp.predicted_away,
+                                                match.home_score!,
+                                                match.away_score!,
+                                            )
+                                          : null;
+
+                                    return (
+                                        <div
+                                            key={mp.user_id}
+                                            className={cx(
+                                                "flex items-center gap-2.5 rounded-lg px-2 py-1.5",
+                                                isCurrentUser && "bg-secondary",
+                                            )}
+                                        >
+                                            <Avatar
+                                                initials={inits}
+                                                src={mp.avatar_url ?? undefined}
+                                                size="xs"
+                                            />
+                                            <span className="min-w-0 flex-1 truncate text-xs font-medium text-primary">
+                                                {mp.display_name ?? "Anonim"}
+                                                {isCurrentUser && (
+                                                    <span className="ml-1 font-normal text-tertiary">(Ty)</span>
+                                                )}
+                                            </span>
+                                            <span className="shrink-0 text-xs font-semibold tabular-nums text-secondary">
+                                                {mp.predicted_home}:{mp.predicted_away}
+                                            </span>
+                                            {displayPoints !== null && (
+                                                <span
+                                                    className={cx(
+                                                        "shrink-0 rounded-full px-1.5 py-0.5 text-xs font-bold tabular-nums",
+                                                        displayPoints === 3
+                                                            ? "bg-success-primary text-success-primary"
+                                                            : displayPoints === 1
+                                                              ? "bg-brand-primary text-brand-primary"
+                                                              : "bg-secondary text-quaternary",
+                                                    )}
+                                                >
+                                                    {displayPoints} pkt
+                                                </span>
+                                            )}
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    )}
+                </div>
             )}
         </div>
     );
