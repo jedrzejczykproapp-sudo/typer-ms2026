@@ -68,6 +68,47 @@ export async function getUserGroups() {
     return data?.map((m) => m.groups).filter(Boolean) ?? [];
 }
 
+export async function renameGroup(groupId: string, name: string) {
+    const supabase = await createClient();
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return { error: "Nie jesteś zalogowany" };
+
+    const { data: group } = await supabase.from("groups").select("created_by").eq("id", groupId).single();
+    if (!group || group.created_by !== user.id) return { error: "Brak uprawnień" };
+
+    const trimmed = name.trim();
+    if (!trimmed) return { error: "Podaj nazwę grupy" };
+
+    const { error } = await supabase.from("groups").update({ name: trimmed }).eq("id", groupId);
+    if (error) return { error: error.message };
+
+    revalidatePath(`/grupy/${groupId}`);
+    revalidatePath("/grupy");
+    return { success: true };
+}
+
+export async function removeMember(groupId: string, memberId: string) {
+    const supabase = await createClient();
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return { error: "Nie jesteś zalogowany" };
+
+    const { data: group } = await supabase.from("groups").select("created_by").eq("id", groupId).single();
+    if (!group || group.created_by !== user.id) return { error: "Brak uprawnień" };
+    if (memberId === user.id) return { error: "Nie możesz usunąć siebie z grupy" };
+
+    const { error } = await supabase.from("group_members").delete().eq("group_id", groupId).eq("user_id", memberId);
+    if (error) return { error: error.message };
+
+    revalidatePath(`/grupy/${groupId}`);
+    return { success: true };
+}
+
 export async function getGroupWithMembers(groupId: string) {
     const supabase = await createClient();
 

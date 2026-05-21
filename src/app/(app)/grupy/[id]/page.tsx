@@ -1,11 +1,11 @@
 import { notFound } from "next/navigation";
-import { Copy01, Users01 } from "@untitledui/icons";
 import { createClient } from "@/lib/supabase/server";
 import { getMatchesWithPredictions, getLeaderboard } from "@/actions/prediction-actions";
+import { getGroupWithMembers } from "@/actions/group-actions";
 import { PredictionCard } from "@/components/app/prediction-card";
 import { LeaderboardTable } from "@/components/app/leaderboard-table";
 import { BottomNav } from "@/components/app/bottom-nav";
-import { CopyCodeButton } from "@/components/app/copy-code-button";
+import { GroupSettingsMenu } from "@/components/app/group-settings-menu";
 import type { Match } from "@/types/database";
 
 const stageOrder = ["group", "round_of_32", "round_of_16", "quarter", "semi", "third_place", "final"] as const;
@@ -44,9 +44,9 @@ export default async function GroupPage({
         data: { user },
     } = await supabase.auth.getUser();
 
-    const [{ data: group }, { count: memberCount }] = await Promise.all([
+    const [{ data: group }, { members }] = await Promise.all([
         supabase.from("groups").select("*").eq("id", id).single(),
-        supabase.from("group_members").select("id", { count: "exact", head: true }).eq("group_id", id),
+        getGroupWithMembers(id),
     ]);
 
     if (!group) notFound();
@@ -64,20 +64,20 @@ export default async function GroupPage({
     return (
         <>
             <div className="flex flex-col gap-6">
-                <div className="flex flex-col gap-3">
+                <div className="flex items-start justify-between gap-3">
                     <div>
                         <h1 className="text-xl font-bold text-primary">{group.name}</h1>
-                        <div className="mt-1 flex items-center gap-2">
-                            <Users01 className="size-3.5 text-fg-quaternary" />
-                            <span className="text-xs text-tertiary">{memberCount ?? 0} uczestników</span>
-                        </div>
+                        <p className="mt-0.5 text-xs text-tertiary">{members.length} uczestników</p>
                     </div>
-
-                    <div className="flex items-center gap-2 rounded-lg bg-secondary px-3 py-2">
-                        <span className="text-xs text-tertiary">Kod zaproszenia:</span>
-                        <code className="font-mono text-sm font-bold tracking-widest text-primary">{group.invite_code}</code>
-                        <CopyCodeButton code={group.invite_code} />
-                    </div>
+                    <GroupSettingsMenu
+                        groupId={id}
+                        inviteCode={group.invite_code}
+                        groupName={group.name}
+                        isAdmin={group.created_by === user!.id}
+                        currentUserId={user!.id}
+                        members={members as any}
+                        createdBy={group.created_by}
+                    />
                 </div>
 
                 <div className="flex gap-1 rounded-xl bg-secondary p-1">

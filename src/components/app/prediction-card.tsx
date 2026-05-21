@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Check, Lock01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { upsertPrediction } from "@/actions/prediction-actions";
@@ -73,19 +73,45 @@ export function PredictionCard({ match, groupId, prediction }: PredictionCardPro
 
     const [homeScore, setHomeScore] = useState(prediction?.predicted_home ?? 0);
     const [awayScore, setAwayScore] = useState(prediction?.predicted_away ?? 0);
+    const [localPrediction, setLocalPrediction] = useState(prediction);
     const [saved, setSaved] = useState(false);
     const [isPending, startTransition] = useTransition();
 
+    // Sync with server data when prediction prop arrives/changes (e.g. after RSC re-render)
+    useEffect(() => {
+        if (prediction && !saved) {
+            setLocalPrediction(prediction);
+            setHomeScore(prediction.predicted_home);
+            setAwayScore(prediction.predicted_away);
+        }
+    }, [prediction?.updated_at]); // eslint-disable-line react-hooks/exhaustive-deps
+
     function handleSave() {
         startTransition(async () => {
-            await upsertPrediction(match.id, groupId, homeScore, awayScore);
-            setSaved(true);
-            setTimeout(() => setSaved(false), 2000);
+            const result = await upsertPrediction(match.id, groupId, homeScore, awayScore);
+            if (!result?.error) {
+                // Optimistically update local state so the card stays consistent
+                setLocalPrediction({
+                    id: localPrediction?.id ?? "",
+                    user_id: localPrediction?.user_id ?? "",
+                    match_id: match.id,
+                    group_id: groupId,
+                    predicted_home: homeScore,
+                    predicted_away: awayScore,
+                    points: localPrediction?.points ?? null,
+                    created_at: localPrediction?.created_at ?? new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                });
+                setSaved(true);
+                setTimeout(() => setSaved(false), 2000);
+            }
         });
     }
 
-    const hasPrediction = prediction !== undefined;
-    const hasChanged = prediction ? homeScore !== prediction.predicted_home || awayScore !== prediction.predicted_away : true;
+    const hasPrediction = localPrediction !== undefined;
+    const hasChanged = localPrediction
+        ? homeScore !== localPrediction.predicted_home || awayScore !== localPrediction.predicted_away
+        : true;
 
     return (
         <div
@@ -135,21 +161,21 @@ export function PredictionCard({ match, groupId, prediction }: PredictionCardPro
                             <div
                                 className={cx(
                                     "flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold",
-                                    prediction.points === 3
+                                    localPrediction!.points === 3
                                         ? "bg-success-primary text-success-primary"
-                                        : prediction.points === 1
+                                        : localPrediction!.points === 1
                                           ? "bg-brand-primary text-brand-primary"
                                           : "bg-secondary text-tertiary",
                                 )}
                             >
-                                {prediction.points === 3 ? "Dokładny wynik" : prediction.points === 1 ? "Poprawny wynik" : "0 pkt"}
-                                {prediction.points !== null && ` · ${prediction.points} pkt`}
+                                {localPrediction!.points === 3 ? "Dokładny wynik" : localPrediction!.points === 1 ? "Poprawny wynik" : "0 pkt"}
+                                {localPrediction!.points !== null && ` · ${localPrediction!.points} pkt`}
                             </div>
                         )}
 
                         {isFinished && hasPrediction && (
                             <div className="text-center text-xs text-tertiary">
-                                Twój typ: {prediction.predicted_home}:{prediction.predicted_away}
+                                Twój typ: {localPrediction!.predicted_home}:{localPrediction!.predicted_away}
                             </div>
                         )}
                     </div>

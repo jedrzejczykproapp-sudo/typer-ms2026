@@ -50,9 +50,6 @@ export function LeaderboardTable({ entries, currentUserId }: { entries: Leaderbo
                                 {entry.display_name ?? "Anonim"}
                                 {isMe && <span className="ml-1 text-xs font-normal text-brand-secondary">(Ty)</span>}
                             </p>
-                            <p className="text-xs text-tertiary">
-                                {entry.exact_scores} dokł. · {entry.correct_results} wyniki · {entry.predictions_count} typów
-                            </p>
                         </div>
 
                         <div className="flex flex-col items-end">
