@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Check, ChevronLeft, Copy01, Edit01, Trash01, Users01, X } from "@untitledui/icons";
+import { Check, ChevronLeft, Copy01, DotsVertical, Edit01, Trash01, Users01, X } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
+import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Input } from "@/components/base/input/input";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { useClipboard } from "@/hooks/use-clipboard";
@@ -100,13 +101,13 @@ export function GroupSettingsMenu({
 
     return (
         <>
-            <button
+            <ButtonUtility
+                icon={DotsVertical}
+                color="secondary"
+                size="md"
+                tooltip="Ustawienia grupy"
                 onClick={openSheet}
-                className="flex size-8 items-center justify-center rounded-lg text-fg-quaternary transition hover:bg-secondary hover:text-fg-tertiary"
-                aria-label="Ustawienia grupy"
-            >
-                <span className="text-lg leading-none tracking-widest">···</span>
-            </button>
+            />
 
             {isOpen && (
                 <>
