@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTheme } from "next-themes";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { BarChart01, CheckCircle, Target01, Trophy01, Users01 } from "@untitledui/icons";
 
@@ -78,18 +79,26 @@ function StatTile({
 // ─── Main dashboard ───────────────────────────────────────────────────────────
 
 export function StatsDashboard({ stats }: { stats: UserStats }) {
+    const { resolvedTheme } = useTheme();
+    const isDark = resolvedTheme === "dark";
+
     const settled = stats.exact + stats.correct + stats.wrong;
     const accuracy = settled > 0 ? Math.round(((stats.exact + stats.correct) / settled) * 100) : 0;
 
+    // Neutral colors adapt to theme — dark gray in dark mode, light gray in light mode
+    const colorWrong   = isDark ? "#3f3f46" : "#d4d4d8";
+    const colorPending = isDark ? "#27272a" : "#e4e4e7";
+    const colorEmpty   = isDark ? "#27272a" : "#e4e4e7";
+
     // Donut chart — always 4 segments so the chart never looks empty
     const chartData = [
-        { name: "Dokładne", value: Math.max(stats.exact, 0), color: "#8b5cf6" },
-        { name: "Wygrane",  value: Math.max(stats.correct, 0), color: "#a78bfa" },
-        { name: "Błędne",   value: Math.max(stats.wrong, 0),   color: "#3f3f46" },
-        { name: "Oczekujące", value: Math.max(stats.pending, 0), color: "#27272a" },
+        { name: "Dokładne",   value: Math.max(stats.exact, 0),   color: "#8b5cf6" },
+        { name: "Wygrane",    value: Math.max(stats.correct, 0),  color: "#a78bfa" },
+        { name: "Błędne",     value: Math.max(stats.wrong, 0),    color: colorWrong },
+        { name: "Oczekujące", value: Math.max(stats.pending, 0),  color: colorPending },
     ];
     const hasData = chartData.some((d) => d.value > 0);
-    const displayData = hasData ? chartData.filter((d) => d.value > 0) : [{ name: "Brak", value: 1, color: "#27272a" }];
+    const displayData = hasData ? chartData.filter((d) => d.value > 0) : [{ name: "Brak", value: 1, color: colorEmpty }];
 
     return (
         <div className="flex flex-col gap-3">
@@ -135,10 +144,10 @@ export function StatsDashboard({ stats }: { stats: UserStats }) {
                 {/* Legend */}
                 <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 px-5 pb-5 pt-1">
                     {[
-                        { label: "Dokładne wyniki", color: "#8b5cf6", count: stats.exact },
-                        { label: "Trafiony wynik",  color: "#a78bfa", count: stats.correct },
-                        { label: "Błędne",          color: "#3f3f46", count: stats.wrong },
-                        { label: "Oczekujące",      color: "#27272a", count: stats.pending },
+                        { label: "Dokładne wyniki", color: "#8b5cf6",    count: stats.exact },
+                        { label: "Trafiony wynik",  color: "#a78bfa",    count: stats.correct },
+                        { label: "Błędne",          color: colorWrong,   count: stats.wrong },
+                        { label: "Oczekujące",      color: colorPending, count: stats.pending },
                     ].map(({ label, color, count }) => (
                         <div key={label} className="flex items-center gap-1.5">
                             <div className="size-2.5 shrink-0 rounded-full border border-white/10" style={{ background: color }} />
