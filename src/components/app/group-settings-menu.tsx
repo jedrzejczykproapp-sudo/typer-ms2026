@@ -21,7 +21,7 @@ export interface AvatarCropHandle {
     hasImage: () => boolean;
 }
 
-const AvatarCropPicker = forwardRef<AvatarCropHandle, { currentUrl: string | null }>(
+export const AvatarCropPicker = forwardRef<AvatarCropHandle, { currentUrl: string | null }>(
     function AvatarCropPicker({ currentUrl }, ref) {
         const fileRef = useRef<HTMLInputElement>(null);
         const canvasRef = useRef<HTMLCanvasElement>(null);

@@ -6,6 +6,7 @@ import { Button } from "@/components/base/buttons/button";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { upsertPrediction } from "@/actions/prediction-actions";
 import { getFlagUrl, getTeamNamePl } from "@/lib/flags";
+import { getClubCrestUrl } from "@/lib/clubs";
 import { createClient } from "@/lib/supabase/client";
 import type { Match, Prediction } from "@/types/database";
 import type { MatchOdds } from "@/lib/odds";
@@ -16,6 +17,7 @@ interface PredictionCardProps {
     groupId: string;
     prediction?: Prediction;
     odds?: MatchOdds;
+    competitionType?: string;
 }
 
 const stageLabels: Record<string, string> = {
@@ -114,22 +116,34 @@ function ScoreInput({
     );
 }
 
-function TeamFlag({ teamName }: { teamName: string }) {
-    const url = getFlagUrl(teamName);
-    if (!url) return <div className="size-8 rounded-lg bg-secondary" />;
+function TeamFlag({ teamName, competitionType }: { teamName: string; competitionType?: string }) {
+    const [imgError, setImgError] = useState(false);
+    const isEkstraklasa = competitionType === "ekstraklasa_2526";
+    const url = isEkstraklasa ? getClubCrestUrl(teamName) : getFlagUrl(teamName);
+
+    if (!url || imgError) {
+        if (isEkstraklasa) {
+            // Club initial fallback
+            return (
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-xs font-bold text-tertiary">
+                    {teamName.charAt(0)}
+                </div>
+            );
+        }
+        return <div className="size-8 shrink-0 rounded-lg bg-secondary" />;
+    }
+
     return (
         <img
             src={url}
             alt={teamName}
-            className="size-8 rounded-lg object-cover"
-            onError={(e) => {
-                e.currentTarget.style.display = "none";
-            }}
+            className={`size-8 shrink-0 rounded-lg ${isEkstraklasa ? "object-contain p-0.5" : "object-cover"}`}
+            onError={() => setImgError(true)}
         />
     );
 }
 
-export function PredictionCard({ match, groupId, prediction, odds }: PredictionCardProps) {
+export function PredictionCard({ match, groupId, prediction, odds, competitionType }: PredictionCardProps) {
     const isLocked = match.status !== "upcoming";
     const isFinished = match.status === "finished";
     const isLive = match.status === "live";
@@ -365,7 +379,7 @@ export function PredictionCard({ match, groupId, prediction, odds }: PredictionC
                     {/* Teams row */}
                     <div className="flex items-center gap-3">
                         <div className="flex flex-1 items-center justify-center gap-2.5">
-                            <TeamFlag teamName={match.home_team} />
+                            <TeamFlag teamName={match.home_team} competitionType={competitionType} />
                             <span className="text-sm font-semibold leading-tight text-primary">
                                 {getTeamNamePl(match.home_team)}
                             </span>
@@ -374,7 +388,7 @@ export function PredictionCard({ match, groupId, prediction, odds }: PredictionC
                             <span className="text-xs font-medium text-tertiary">vs</span>
                         </div>
                         <div className="flex flex-1 items-center justify-center gap-2.5">
-                            <TeamFlag teamName={match.away_team} />
+                            <TeamFlag teamName={match.away_team} competitionType={competitionType} />
                             <span className="text-sm font-semibold leading-tight text-primary">
                                 {getTeamNamePl(match.away_team)}
                             </span>

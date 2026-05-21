@@ -15,14 +15,38 @@ export async function createGroup(formData: FormData) {
     const name = (formData.get("name") as string).trim();
     if (!name) return { error: "Podaj nazwę grupy" };
 
-    const { data: group, error } = await supabase.from("groups").insert({ name, created_by: user.id }).select().single();
+    const competition_type = (formData.get("competition_type") as string) || "wc_2026";
+
+    const { data: group, error } = await supabase
+        .from("groups")
+        .insert({ name, created_by: user.id, competition_type })
+        .select("id, name, invite_code, competition_type")
+        .single();
 
     if (error) return { error: error.message };
 
     await supabase.from("group_members").insert({ group_id: group.id, user_id: user.id });
 
     revalidatePath("/grupy");
-    redirect(`/grupy/${group.id}`);
+    revalidatePath("/konto");
+
+    return { success: true as const, group };
+}
+
+export async function setGroupAvatar(groupId: string, avatarUrl: string) {
+    const supabase = await createClient();
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return { error: "Nie jesteś zalogowany" };
+
+    const { error } = await supabase.from("groups").update({ avatar_url: avatarUrl }).eq("id", groupId);
+    if (error) return { error: error.message };
+
+    revalidatePath(`/grupy/${groupId}`);
+    revalidatePath("/konto");
+    return { success: true };
 }
 
 export async function joinGroup(formData: FormData) {

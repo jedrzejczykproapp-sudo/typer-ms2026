@@ -54,7 +54,7 @@ export default async function KontoPage({
     // Fetch user's groups
     const { data: memberships } = await supabase
         .from("group_members")
-        .select("group_id, groups(id, name, invite_code, created_at, avatar_url)")
+        .select("group_id, groups(id, name, invite_code, created_at, avatar_url, competition_type)")
         .eq("user_id", user.id)
         .order("joined_at", { ascending: false });
 
@@ -64,6 +64,7 @@ export default async function KontoPage({
         invite_code: string;
         created_at: string;
         avatar_url: string | null;
+        competition_type: string;
     }[];
 
     const activeGroup = groups.length > 0
@@ -103,7 +104,7 @@ export default async function KontoPage({
             {tab === "statystyki" ? (
                 <StatystykiTab userId={user.id} groups={groups} />
             ) : tab === "typowania" ? (
-                <TypowaniaTab groups={groups} activeGroup={activeGroup} />
+                <TypowaniaTab groups={groups} activeGroup={activeGroup} competitionType={activeGroup?.competition_type} />
             ) : (
                 <GrupyTab groups={groups} />
             )}
@@ -116,9 +117,11 @@ export default async function KontoPage({
 async function TypowaniaTab({
     groups,
     activeGroup,
+    competitionType,
 }: {
     groups: { id: string; name: string; avatar_url: string | null }[];
     activeGroup: { id: string; name: string; avatar_url: string | null } | null;
+    competitionType?: string;
 }) {
     // ── No groups at all ──────────────────────────────────────────────────────
     if (!groups.length || !activeGroup) {
@@ -203,6 +206,7 @@ async function TypowaniaTab({
                                         groupId={activeGroup.id}
                                         prediction={predictions.get(match.id)}
                                         odds={oddsMap.get(`${match.home_team}|${match.away_team}`)}
+                                        competitionType={competitionType}
                                     />
                                 ))}
                             </div>
