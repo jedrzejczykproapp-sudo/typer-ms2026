@@ -22,8 +22,8 @@ const stageLabels: Record<string, string> = {
 
 const TABS = [
     { key: "typowania", label: "Typowania" },
-    { key: "tabela", label: "Tabela" },
-    { key: "grupy", label: "Grupy MŚ" },
+    { key: "tabela", label: "Ranking" },
+    { key: "grupy", label: "Tabela" },
 ] as const;
 
 function groupMatchesByStage(matches: Match[]) {
@@ -176,7 +176,7 @@ async function TabelaTab({ groupId, userId }: { groupId: string; userId: string 
     return (
         <div className="overflow-hidden rounded-xl border border-secondary bg-primary shadow-xs">
             <div className="border-b border-secondary px-4 py-3">
-                <h2 className="font-semibold text-primary">Ranking grupy</h2>
+                <h2 className="font-semibold text-primary">Leaderboard</h2>
             </div>
             <LeaderboardTable entries={entries} currentUserId={userId} />
         </div>
