@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Camera01, Check, ChevronLeft, Copy01, DotsVertical, Edit01, Trash01, Users01, X } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
@@ -10,6 +10,200 @@ import { useClipboard } from "@/hooks/use-clipboard";
 import { createClient } from "@/lib/supabase/client";
 import { getGroupMembers, removeMember, renameGroup } from "@/actions/group-actions";
 import { cx } from "@/utils/cx";
+
+// ─── Avatar crop picker ───────────────────────────────────────────────────────
+
+const CROP_SIZE = 200;
+
+export interface AvatarCropHandle {
+    getCroppedBlob: () => Promise<Blob | null>;
+    hasImage: () => boolean;
+}
+
+const AvatarCropPicker = forwardRef<AvatarCropHandle, { currentUrl: string | null }>(
+    function AvatarCropPicker({ currentUrl }, ref) {
+        const fileRef = useRef<HTMLInputElement>(null);
+        const canvasRef = useRef<HTMLCanvasElement>(null);
+        const paintRef = useRef<(() => void) | null>(null);
+
+        const imgEl = useRef<HTMLImageElement | null>(null);
+        const natW = useRef(0);
+        const natH = useRef(0);
+        const sc = useRef(1);
+        const baseSc = useRef(1);
+        const ox = useRef(0);
+        const oy = useRef(0);
+
+        const [hasNew, setHasNew] = useState(false);
+
+        useImperativeHandle(ref, () => ({
+            getCroppedBlob: () => {
+                const img = imgEl.current;
+                if (!img) return Promise.resolve(null);
+                return new Promise((resolve, reject) => {
+                    const OUT = 400;
+                    const out = document.createElement("canvas");
+                    out.width = OUT;
+                    out.height = OUT;
+                    const s = sc.current;
+                    const il = (CROP_SIZE - natW.current * s) / 2 + ox.current;
+                    const it = (CROP_SIZE - natH.current * s) / 2 + oy.current;
+                    out.getContext("2d")!.drawImage(img, -il / s, -it / s, CROP_SIZE / s, CROP_SIZE / s, 0, 0, OUT, OUT);
+                    out.toBlob((b) => (b ? resolve(b) : reject()), "image/jpeg", 0.92);
+                });
+            },
+            hasImage: () => imgEl.current !== null,
+        }));
+
+        useEffect(() => {
+            const canvas = canvasRef.current;
+            if (!canvas) return;
+
+            const paint = () => {
+                const img = imgEl.current;
+                if (!img) return;
+                const ctx = canvas.getContext("2d")!;
+                const s = sc.current;
+                ctx.clearRect(0, 0, CROP_SIZE, CROP_SIZE);
+                ctx.drawImage(
+                    img,
+                    (CROP_SIZE - natW.current * s) / 2 + ox.current,
+                    (CROP_SIZE - natH.current * s) / 2 + oy.current,
+                    natW.current * s,
+                    natH.current * s,
+                );
+            };
+            paintRef.current = paint;
+
+            let pid: number | null = null;
+            let lx = 0,
+                ly = 0;
+
+            const onDown = (e: PointerEvent) => {
+                if (!imgEl.current) return;
+                e.preventDefault();
+                pid = e.pointerId;
+                lx = e.clientX;
+                ly = e.clientY;
+                canvas.setPointerCapture(e.pointerId);
+            };
+            const onMove = (e: PointerEvent) => {
+                if (e.pointerId !== pid) return;
+                ox.current += e.clientX - lx;
+                oy.current += e.clientY - ly;
+                lx = e.clientX;
+                ly = e.clientY;
+                paint();
+            };
+            const onUp = (e: PointerEvent) => {
+                if (e.pointerId === pid) pid = null;
+            };
+
+            canvas.addEventListener("pointerdown", onDown);
+            canvas.addEventListener("pointermove", onMove);
+            canvas.addEventListener("pointerup", onUp);
+            canvas.addEventListener("pointercancel", onUp);
+            return () => {
+                canvas.removeEventListener("pointerdown", onDown);
+                canvas.removeEventListener("pointermove", onMove);
+                canvas.removeEventListener("pointerup", onUp);
+                canvas.removeEventListener("pointercancel", onUp);
+            };
+        }, []);
+
+        function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+            const f = e.target.files?.[0];
+            if (!f) return;
+            const url = URL.createObjectURL(f);
+            const img = new Image();
+            img.onload = () => {
+                imgEl.current = img;
+                natW.current = img.naturalWidth;
+                natH.current = img.naturalHeight;
+                const s = Math.max(CROP_SIZE / natW.current, CROP_SIZE / natH.current);
+                sc.current = s;
+                baseSc.current = s;
+                ox.current = 0;
+                oy.current = 0;
+                paintRef.current?.();
+                setHasNew(true);
+            };
+            img.src = url;
+            e.target.value = "";
+        }
+
+        function onZoom(mult: number) {
+            sc.current = baseSc.current * mult;
+            paintRef.current?.();
+        }
+
+        return (
+            <div className="flex flex-col items-center gap-3">
+                <div
+                    className="relative overflow-hidden rounded-2xl border-2 border-dashed border-secondary bg-secondary"
+                    style={{ width: CROP_SIZE, height: CROP_SIZE }}
+                >
+                    {!hasNew && currentUrl && (
+                        <img src={currentUrl} alt="Avatar" className="absolute size-full object-cover" />
+                    )}
+                    {!hasNew && !currentUrl && (
+                        <button
+                            type="button"
+                            onClick={() => fileRef.current?.click()}
+                            className="flex size-full items-center justify-center"
+                        >
+                            <Camera01 className="size-10 text-fg-quaternary" />
+                        </button>
+                    )}
+                    <canvas
+                        ref={canvasRef}
+                        width={CROP_SIZE}
+                        height={CROP_SIZE}
+                        style={{
+                            position: "absolute",
+                            inset: 0,
+                            width: CROP_SIZE,
+                            height: CROP_SIZE,
+                            cursor: hasNew ? "grab" : "default",
+                            touchAction: "none",
+                            display: hasNew ? "block" : "none",
+                        }}
+                    />
+                </div>
+
+                {hasNew && (
+                    <>
+                        <div className="flex w-full items-center gap-2 px-1">
+                            <span className="text-xs text-tertiary">Zoom</span>
+                            <input
+                                type="range"
+                                min={1}
+                                max={3}
+                                step={0.05}
+                                defaultValue={1}
+                                onChange={(e) => onZoom(Number(e.target.value))}
+                                className="flex-1"
+                            />
+                        </div>
+                        <p className="text-center text-xs text-tertiary">Przeciągnij aby ustawić kadr</p>
+                    </>
+                )}
+
+                <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    className="rounded-lg border border-secondary px-3 py-1.5 text-xs font-medium text-secondary transition hover:bg-secondary"
+                >
+                    {hasNew || currentUrl ? "Zmień zdjęcie" : "Wybierz zdjęcie"}
+                </button>
+
+                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
+            </div>
+        );
+    },
+);
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Member {
     user_id: string;
@@ -38,6 +232,8 @@ function initials(name: string | null) {
         .toUpperCase();
 }
 
+// ─── Component ───────────────────────────────────────────────────────────────
+
 export function GroupSettingsMenu({
     groupId,
     inviteCode,
@@ -54,9 +250,7 @@ export function GroupSettingsMenu({
     const [isSaving, setIsSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [removingId, setRemovingId] = useState<string | null>(null);
-    const [avatarPreview, setAvatarPreview] = useState<string | null>(currentAvatarUrl);
-    const [avatarFile, setAvatarFile] = useState<File | null>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    const cropRef = useRef<AvatarCropHandle>(null);
     const clipboard = useClipboard();
     const supabase = createClient();
 
@@ -70,8 +264,6 @@ export function GroupSettingsMenu({
     }
 
     function openEdit() {
-        setAvatarPreview(currentAvatarUrl);
-        setAvatarFile(null);
         setSaveError(null);
         setSheet("edit");
     }
@@ -84,14 +276,6 @@ export function GroupSettingsMenu({
         setMembersLoading(false);
     }
 
-    function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        setAvatarFile(file);
-        setAvatarPreview(URL.createObjectURL(file));
-        e.target.value = "";
-    }
-
     async function handleSave(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
         setSaveError(null);
@@ -100,19 +284,21 @@ export function GroupSettingsMenu({
         const fd = new FormData(e.currentTarget);
         let avatarUrl: string | null | undefined = undefined;
 
-        if (avatarFile) {
-            const ext = avatarFile.name.split(".").pop() ?? "jpg";
-            const path = `${groupId}/${Date.now()}.${ext}`;
-            const { data, error } = await supabase.storage
-                .from("group-avatars")
-                .upload(path, avatarFile, { contentType: avatarFile.type, upsert: true });
-            if (error) {
-                setSaveError("Błąd wgrywania zdjęcia");
-                setIsSaving(false);
-                return;
+        if (cropRef.current?.hasImage()) {
+            const blob = await cropRef.current.getCroppedBlob();
+            if (blob) {
+                const path = `${groupId}/${Date.now()}.jpg`;
+                const { data, error } = await supabase.storage
+                    .from("group-avatars")
+                    .upload(path, blob, { contentType: "image/jpeg", upsert: true });
+                if (error) {
+                    setSaveError("Błąd wgrywania zdjęcia");
+                    setIsSaving(false);
+                    return;
+                }
+                const { data: { publicUrl } } = supabase.storage.from("group-avatars").getPublicUrl(data.path);
+                avatarUrl = publicUrl;
             }
-            const { data: { publicUrl } } = supabase.storage.from("group-avatars").getPublicUrl(data.path);
-            avatarUrl = publicUrl;
         }
 
         const result = await renameGroup(groupId, fd.get("name") as string, avatarUrl);
@@ -172,7 +358,7 @@ export function GroupSettingsMenu({
                             </button>
                         </div>
 
-                        <div className="px-4 py-3 pb-8">
+                        <div className="max-h-[70dvh] overflow-y-auto px-4 py-3 pb-8">
                             {sheet === "options" && (
                                 <div className="flex flex-col">
                                     <button
@@ -214,35 +400,8 @@ export function GroupSettingsMenu({
 
                             {sheet === "edit" && (
                                 <form onSubmit={handleSave} className="flex flex-col gap-4">
-                                    <div className="flex flex-col items-center gap-3">
-                                        <button
-                                            type="button"
-                                            onClick={() => fileInputRef.current?.click()}
-                                            className="group relative size-20 shrink-0 overflow-hidden rounded-2xl bg-secondary"
-                                        >
-                                            {avatarPreview ? (
-                                                <img src={avatarPreview} alt="Avatar" className="size-full object-cover" />
-                                            ) : (
-                                                <div className="flex size-full items-center justify-center text-2xl font-bold text-tertiary">
-                                                    {groupName.charAt(0).toUpperCase()}
-                                                </div>
-                                            )}
-                                            <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition group-hover:opacity-100">
-                                                <Camera01 className="size-6 text-white" />
-                                            </div>
-                                        </button>
-                                        <p className="text-xs text-tertiary">Kliknij aby zmienić zdjęcie grupy</p>
-                                        <input
-                                            ref={fileInputRef}
-                                            type="file"
-                                            accept="image/*"
-                                            className="hidden"
-                                            onChange={handleAvatarChange}
-                                        />
-                                    </div>
-
+                                    <AvatarCropPicker ref={cropRef} currentUrl={currentAvatarUrl} />
                                     <Input name="name" label="Nazwa grupy" defaultValue={groupName} isRequired />
-
                                     {saveError && (
                                         <p className="rounded-lg bg-error-primary px-3 py-2 text-sm text-error-primary">
                                             {saveError}
@@ -255,7 +414,7 @@ export function GroupSettingsMenu({
                             )}
 
                             {sheet === "members" && (
-                                <div className="flex max-h-72 flex-col gap-1 overflow-y-auto">
+                                <div className="flex flex-col gap-1">
                                     {membersLoading ? (
                                         <p className="py-6 text-center text-sm text-tertiary">Ładowanie...</p>
                                     ) : (

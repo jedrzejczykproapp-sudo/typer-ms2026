@@ -46,21 +46,21 @@ function ScoreInput({
     disabled: boolean;
 }) {
     return (
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
             <button
                 type="button"
                 disabled={disabled || value <= 0}
                 onClick={() => onChange(Math.max(0, value - 1))}
-                className="flex size-8 items-center justify-center rounded-lg bg-secondary text-lg font-bold text-primary transition hover:bg-secondary_hover disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex size-11 items-center justify-center rounded-xl bg-secondary text-2xl font-bold text-primary transition hover:bg-secondary_hover disabled:cursor-not-allowed disabled:opacity-40"
             >
                 −
             </button>
-            <span className="w-8 text-center text-2xl font-bold tabular-nums text-primary">{value}</span>
+            <span className="w-10 text-center text-3xl font-bold tabular-nums text-primary">{value}</span>
             <button
                 type="button"
                 disabled={disabled}
                 onClick={() => onChange(Math.min(20, value + 1))}
-                className="flex size-8 items-center justify-center rounded-lg bg-secondary text-lg font-bold text-primary transition hover:bg-secondary_hover disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex size-11 items-center justify-center rounded-xl bg-secondary text-2xl font-bold text-primary transition hover:bg-secondary_hover disabled:cursor-not-allowed disabled:opacity-40"
             >
                 +
             </button>
@@ -83,7 +83,6 @@ export function PredictionCard({ match, groupId, prediction, odds }: PredictionC
         startTransition(async () => {
             const result = await upsertPrediction(match.id, groupId, homeScore, awayScore);
             if (!result?.error) {
-                // Optimistically update local state so the card stays consistent
                 setLocalPrediction({
                     id: localPrediction?.id ?? "",
                     user_id: localPrediction?.user_id ?? "",
@@ -114,6 +113,7 @@ export function PredictionCard({ match, groupId, prediction, odds }: PredictionC
                 isLocked && "opacity-80",
             )}
         >
+            {/* Header row */}
             <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-tertiary">
                     {match.group_name ? `Grupa ${match.group_name} · Kolejka ${match.matchday}` : stageLabels[match.stage]}
@@ -124,18 +124,14 @@ export function PredictionCard({ match, groupId, prediction, odds }: PredictionC
             {isTbd ? (
                 <p className="py-2 text-center text-sm text-tertiary">Mecz do ustalenia po fazie grupowej</p>
             ) : (
-                <div className="flex items-center justify-between gap-2">
-                    <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
-                        <span className="text-2xl">{match.home_flag}</span>
-                        <span className="text-center text-sm font-semibold leading-tight text-primary">{match.home_team}</span>
-                    </div>
-
-                    <div className="flex flex-col items-center gap-2">
+                <>
+                    {/* Row 1: scores / inputs */}
+                    <div className="flex items-center justify-center gap-3">
                         {isFinished ? (
-                            <div className="flex items-center gap-1">
-                                <span className="text-2xl font-bold text-primary">{match.home_score}</span>
-                                <span className="text-lg text-tertiary">:</span>
-                                <span className="text-2xl font-bold text-primary">{match.away_score}</span>
+                            <div className="flex items-center gap-3">
+                                <span className="text-3xl font-bold text-primary">{match.home_score}</span>
+                                <span className="text-xl text-tertiary">:</span>
+                                <span className="text-3xl font-bold text-primary">{match.away_score}</span>
                             </div>
                         ) : isLocked ? (
                             <div className="flex items-center gap-1.5 text-tertiary">
@@ -143,14 +139,29 @@ export function PredictionCard({ match, groupId, prediction, odds }: PredictionC
                                 <span className="text-sm">W trakcie</span>
                             </div>
                         ) : (
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-3">
                                 <ScoreInput value={homeScore} onChange={setHomeScore} disabled={isLocked} />
-                                <span className="text-lg font-bold text-tertiary">:</span>
+                                <span className="text-xl font-bold text-tertiary">:</span>
                                 <ScoreInput value={awayScore} onChange={setAwayScore} disabled={isLocked} />
                             </div>
                         )}
+                    </div>
 
-                        {isFinished && hasPrediction && (
+                    {/* Row 2: flag + name */}
+                    <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                            <span className="text-2xl">{match.home_flag}</span>
+                            <span className="text-sm font-semibold leading-tight text-primary">{match.home_team}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold leading-tight text-primary">{match.away_team}</span>
+                            <span className="text-2xl">{match.away_flag}</span>
+                        </div>
+                    </div>
+
+                    {/* Points after finished */}
+                    {isFinished && hasPrediction && (
+                        <div className="flex flex-col items-center gap-1">
                             <div
                                 className={cx(
                                     "flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold",
@@ -164,22 +175,15 @@ export function PredictionCard({ match, groupId, prediction, odds }: PredictionC
                                 {localPrediction!.points === 3 ? "Dokładny wynik" : localPrediction!.points === 1 ? "Poprawny wynik" : "0 pkt"}
                                 {localPrediction!.points !== null && ` · ${localPrediction!.points} pkt`}
                             </div>
-                        )}
-
-                        {isFinished && hasPrediction && (
                             <div className="text-center text-xs text-tertiary">
                                 Twój typ: {localPrediction!.predicted_home}:{localPrediction!.predicted_away}
                             </div>
-                        )}
-                    </div>
-
-                    <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
-                        <span className="text-2xl">{match.away_flag}</span>
-                        <span className="text-center text-sm font-semibold leading-tight text-primary">{match.away_team}</span>
-                    </div>
-                </div>
+                        </div>
+                    )}
+                </>
             )}
 
+            {/* Odds row */}
             {odds && !isTbd && (
                 <div className="flex items-center justify-center gap-2 border-t border-secondary pt-3">
                     <span className="text-xs text-tertiary">Kursy:</span>
