@@ -64,7 +64,6 @@ export default async function KontoPage({
         avatar_url: string | null;
     }[];
 
-    // Resolve active group at page level so the header is always rendered
     const activeGroup = groups.length > 0
         ? (groupParam ? groups.find((g) => g.id === groupParam) ?? groups[0] : groups[0])
         : null;
@@ -86,44 +85,10 @@ export default async function KontoPage({
                 ))}
             </div>
 
-            {/* Group header — always visible on Typowania tab when user has groups */}
-            {tab === "typowania" && activeGroup && (
-                <>
-                    {/* Group selector (multiple groups) */}
-                    {groups.length > 1 && (
-                        <div className="flex gap-2 overflow-x-auto pb-0.5">
-                            {groups.map((g) => (
-                                <a
-                                    key={g.id}
-                                    href={`/konto?tab=typowania&group=${g.id}`}
-                                    className={`shrink-0 rounded-full px-3 py-1.5 text-sm font-medium transition ${
-                                        g.id === activeGroup.id
-                                            ? "bg-brand-solid text-white"
-                                            : "bg-secondary text-secondary hover:bg-secondary_hover"
-                                    }`}
-                                >
-                                    {g.name}
-                                </a>
-                            ))}
-                        </div>
-                    )}
-                    <div className="flex items-center justify-between">
-                        <p className="text-sm font-semibold text-tertiary">{activeGroup.name}</p>
-                        <Link
-                            href={`/grupy/${activeGroup.id}`}
-                            className="flex items-center gap-1 text-sm text-brand-secondary hover:underline"
-                        >
-                            Ranking &amp; Tabela
-                            <ChevronRight className="size-4" />
-                        </Link>
-                    </div>
-                </>
-            )}
-
             {tab === "typowania" ? (
-                <TypowaniaTab userId={user.id} groups={groups} activeGroup={activeGroup} />
+                <TypowaniaTab groups={groups} activeGroup={activeGroup} />
             ) : (
-                <GrupyTab userId={user.id} groups={groups} />
+                <GrupyTab groups={groups} />
             )}
         </div>
     );
@@ -132,30 +97,15 @@ export default async function KontoPage({
 // ─── Typowania tab ────────────────────────────────────────────────────────────
 
 async function TypowaniaTab({
-    userId,
     groups,
     activeGroup,
 }: {
-    userId: string;
     groups: { id: string; name: string; avatar_url: string | null }[];
     activeGroup: { id: string; name: string; avatar_url: string | null } | null;
 }) {
+    // ── No groups at all ──────────────────────────────────────────────────────
     if (!groups.length || !activeGroup) {
-        return (
-            <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed border-secondary bg-primary py-16 text-center">
-                <FeaturedIcon icon={Users01} color="brand" theme="light" size="lg" />
-                <div>
-                    <p className="font-semibold text-primary">Brak grup</p>
-                    <p className="mt-1 text-sm text-tertiary">
-                        Utwórz grupę lub dołącz do istniejącej, aby zacząć typować.
-                    </p>
-                </div>
-                <div className="flex gap-3">
-                    <CreateGroupModal />
-                    <JoinGroupModal />
-                </div>
-            </div>
-        );
+        return <EmptyState icon={Users01 as Parameters<typeof FeaturedIcon>[0]["icon"]} title="Brak grup" description="Utwórz grupę lub dołącz do istniejącej, aby zacząć typować." />;
     }
 
     const [{ matches, predictions }, oddsMap] = await Promise.all([
@@ -163,7 +113,7 @@ async function TypowaniaTab({
         getWcOdds(),
     ]);
 
-    // Filter to today's matches only (compare YYYY-MM-DD in UTC)
+    // Filter to today only
     const todayUtc = new Date().toISOString().slice(0, 10);
     const todayMatches = matches.filter((m) => m.match_date.slice(0, 10) === todayUtc);
 
@@ -180,58 +130,82 @@ async function TypowaniaTab({
         return a.localeCompare(b);
     });
 
-    // No matches today
+    // ── No matches today ──────────────────────────────────────────────────────
     if (sortedKeys.length === 0) {
-        return (
-            <div className="flex flex-col items-center gap-5 rounded-2xl border border-secondary bg-primary px-6 py-14 text-center">
-                <FeaturedIcon icon={CalendarCheck01} color="brand" theme="light" size="lg" />
-                <div className="flex flex-col gap-1.5">
-                    <p className="text-base font-semibold text-primary">Brak meczów na dziś</p>
-                    <p className="text-sm text-tertiary">
-                        Dzisiaj nie ma zaplanowanych spotkań.
-                        <br />
-                        Zaproś znajomych i typujcie razem!
-                    </p>
+        return <EmptyState icon={CalendarCheck01 as Parameters<typeof FeaturedIcon>[0]["icon"]} title="Brak meczów na dziś" description="Dzisiaj nie ma zaplanowanych spotkań. Zaproś znajomych i typujcie razem!" />;
+    }
+
+    // ── Has matches: show group header + cards ────────────────────────────────
+    return (
+        <div className="flex flex-col gap-4">
+            {/* Group selector (multiple groups) */}
+            {groups.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto pb-0.5">
+                    {groups.map((g) => (
+                        <a
+                            key={g.id}
+                            href={`/konto?tab=typowania&group=${g.id}`}
+                            className={`shrink-0 rounded-full px-3 py-1.5 text-sm font-medium transition ${
+                                g.id === activeGroup.id
+                                    ? "bg-brand-solid text-white"
+                                    : "bg-secondary text-secondary hover:bg-secondary_hover"
+                            }`}
+                        >
+                            {g.name}
+                        </a>
+                    ))}
                 </div>
-                <CreateGroupModal />
+            )}
+
+            {/* Group name + Ranking link */}
+            <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-tertiary">{activeGroup.name}</p>
                 <Link
                     href={`/grupy/${activeGroup.id}`}
                     className="flex items-center gap-1 text-sm text-brand-secondary hover:underline"
                 >
-                    Wszystkie typowania grupy
+                    Ranking &amp; Tabela
                     <ChevronRight className="size-4" />
                 </Link>
             </div>
-        );
-    }
 
+            {/* Match cards */}
+            <div className="flex flex-col gap-8">
+                {sortedKeys.map((key) => {
+                    const sectionMatches = grouped[key];
+                    const isMatchday = key.startsWith("matchday_");
+                    const label = isMatchday ? `Kolejka ${key.split("_")[1]}` : stageLabels[key];
+                    return (
+                        <section key={key}>
+                            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-tertiary">{label}</h2>
+                            <div className="flex flex-col gap-3">
+                                {sectionMatches.map((match) => (
+                                    <PredictionCard
+                                        key={match.id}
+                                        match={match}
+                                        groupId={activeGroup.id}
+                                        prediction={predictions.get(match.id)}
+                                        odds={oddsMap.get(`${match.home_team}|${match.away_team}`)}
+                                    />
+                                ))}
+                            </div>
+                        </section>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+function EmptyState({ icon, title, description }: { icon: Parameters<typeof FeaturedIcon>[0]["icon"]; title: string; description: string }) {
     return (
-        <div className="flex flex-col gap-8">
-            {sortedKeys.map((key) => {
-                const sectionMatches = grouped[key];
-                const isMatchday = key.startsWith("matchday_");
-                const matchdayNum = isMatchday ? key.split("_")[1] : null;
-                const label = isMatchday ? `Kolejka ${matchdayNum}` : stageLabels[key];
-
-                return (
-                    <section key={key}>
-                        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-tertiary">
-                            {label}
-                        </h2>
-                        <div className="flex flex-col gap-3">
-                            {sectionMatches.map((match) => (
-                                <PredictionCard
-                                    key={match.id}
-                                    match={match}
-                                    groupId={activeGroup.id}
-                                    prediction={predictions.get(match.id)}
-                                    odds={oddsMap.get(`${match.home_team}|${match.away_team}`)}
-                                />
-                            ))}
-                        </div>
-                    </section>
-                );
-            })}
+        <div className="flex flex-col items-center gap-5 rounded-2xl border border-secondary bg-primary px-6 py-16 text-center">
+            <FeaturedIcon icon={icon} color="brand" theme="light" size="lg" />
+            <div className="flex flex-col gap-1.5">
+                <p className="text-base font-semibold text-primary">{title}</p>
+                <p className="text-sm text-tertiary">{description}</p>
+            </div>
+            <CreateGroupModal />
         </div>
     );
 }
@@ -239,10 +213,8 @@ async function TypowaniaTab({
 // ─── Grupy tab ────────────────────────────────────────────────────────────────
 
 function GrupyTab({
-    userId,
     groups,
 }: {
-    userId: string;
     groups: { id: string; name: string; invite_code: string; avatar_url: string | null }[];
 }) {
     return (
