@@ -56,7 +56,7 @@ export default async function KontoPage({
         .eq("user_id", user.id)
         .order("joined_at", { ascending: false });
 
-    const groups = (memberships?.map((m) => m.groups).filter(Boolean) ?? []) as {
+    const groups = (memberships?.map((m) => m.groups).filter(Boolean) ?? []) as unknown as {
         id: string;
         name: string;
         invite_code: string;
