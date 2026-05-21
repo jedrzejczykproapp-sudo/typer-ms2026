@@ -250,6 +250,7 @@ export function GroupSettingsMenu({
     const [isSaving, setIsSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [removingId, setRemovingId] = useState<string | null>(null);
+    const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
     const cropRef = useRef<AvatarCropHandle>(null);
     const clipboard = useClipboard();
     const supabase = createClient();
@@ -315,6 +316,7 @@ export function GroupSettingsMenu({
         const result = await removeMember(groupId, memberId);
         if (!result?.error) {
             setMembers((prev) => prev.filter((m) => m.user_id !== memberId));
+            setConfirmRemoveId(null);
         }
         setRemovingId(null);
     }
@@ -423,7 +425,42 @@ export function GroupSettingsMenu({
                                             const isCreator = member.user_id === createdBy;
                                             const isMe = member.user_id === currentUserId;
                                             const canRemove = isAdmin && !isCreator && !isMe;
+                                            const isPendingConfirm = confirmRemoveId === member.user_id;
+                                            const isRemoving = removingId === member.user_id;
 
+                                            // ── Inline confirmation row ──
+                                            if (isPendingConfirm) {
+                                                return (
+                                                    <div
+                                                        key={member.user_id}
+                                                        className="flex items-center gap-3 rounded-xl border border-error-primary bg-error-primary px-3 py-2.5"
+                                                    >
+                                                        <div className="min-w-0 flex-1">
+                                                            <p className="text-sm font-medium text-error-primary">
+                                                                Usunąć {name} z grupy?
+                                                            </p>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <button
+                                                                onClick={() => setConfirmRemoveId(null)}
+                                                                disabled={isRemoving}
+                                                                className="rounded-lg px-3 py-1.5 text-xs font-semibold text-tertiary transition hover:bg-secondary disabled:opacity-40"
+                                                            >
+                                                                Anuluj
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleRemoveMember(member.user_id)}
+                                                                disabled={isRemoving}
+                                                                className="rounded-lg bg-error-solid px-3 py-1.5 text-xs font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                                                            >
+                                                                {isRemoving ? "Usuwanie…" : "Usuń"}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
+
+                                            // ── Normal member row ──
                                             return (
                                                 <div key={member.user_id} className="flex items-center gap-3 rounded-xl px-3 py-2.5">
                                                     <Avatar initials={initials(name)} size="sm" />
@@ -433,17 +470,15 @@ export function GroupSettingsMenu({
                                                             {isMe && <span className="ml-1 text-xs text-tertiary">(Ty)</span>}
                                                         </p>
                                                         {isCreator && (
-                                                            <p className="text-xs font-medium text-brand-secondary">Admin</p>
+                                                            <p className="text-xs font-semibold text-brand-secondary">Admin</p>
                                                         )}
                                                     </div>
                                                     {canRemove && (
                                                         <button
-                                                            onClick={() => handleRemoveMember(member.user_id)}
-                                                            disabled={removingId === member.user_id}
+                                                            onClick={() => setConfirmRemoveId(member.user_id)}
                                                             className={cx(
                                                                 "rounded-lg p-1.5 text-fg-quaternary transition",
                                                                 "hover:bg-error-primary hover:text-error-primary",
-                                                                "disabled:cursor-not-allowed disabled:opacity-40",
                                                             )}
                                                             aria-label={`Usuń ${name}`}
                                                         >
