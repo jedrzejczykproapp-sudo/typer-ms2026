@@ -46,7 +46,7 @@ function PredictionCardSkeleton() {
 export default function Loading() {
     return (
         <>
-            <div className="flex animate-pulse flex-col gap-6">
+            <div className="flex animate-pulse flex-col gap-3">
                 {/* Group header */}
                 <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
@@ -59,8 +59,12 @@ export default function Loading() {
                     <Skel className="size-9 rounded-lg" />
                 </div>
 
-                {/* Tab switcher */}
-                <Skel className="h-12 w-full rounded-xl" />
+                {/* 3-tab switcher */}
+                <div className="flex gap-1 rounded-xl bg-secondary p-1">
+                    <Skel className="h-9 flex-1 rounded-lg" />
+                    <Skel className="h-9 flex-1 rounded-lg" />
+                    <Skel className="h-9 flex-1 rounded-lg" />
+                </div>
 
                 {/* Section label */}
                 <div className="flex flex-col gap-8">

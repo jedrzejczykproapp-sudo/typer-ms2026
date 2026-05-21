@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getMatchesWithPredictions, getLeaderboard } from "@/actions/prediction-actions";
 import { getWcOdds } from "@/lib/odds";
+import { getFlagUrl } from "@/lib/flags";
 import { PredictionCard } from "@/components/app/prediction-card";
 import { LeaderboardTable } from "@/components/app/leaderboard-table";
 import { BottomNav } from "@/components/app/bottom-nav";
@@ -18,6 +19,12 @@ const stageLabels: Record<string, string> = {
     third_place: "Mecz o 3. miejsce",
     final: "Finał",
 };
+
+const TABS = [
+    { key: "typowania", label: "Typowania" },
+    { key: "tabela", label: "Tabela" },
+    { key: "grupy", label: "Grupy MŚ" },
+] as const;
 
 function groupMatchesByStage(matches: Match[]) {
     const grouped: Record<string, Match[]> = {};
@@ -55,7 +62,8 @@ export default async function GroupPage({
 
     return (
         <>
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-3">
+                {/* Group header */}
                 <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
                         <div className="size-12 shrink-0 overflow-hidden rounded-xl bg-secondary">
@@ -83,24 +91,28 @@ export default async function GroupPage({
                     />
                 </div>
 
+                {/* Tabs */}
                 <div className="flex gap-1 rounded-xl bg-secondary p-1">
-                    {["typowania", "tabela"].map((t) => (
+                    {TABS.map(({ key, label }) => (
                         <a
-                            key={t}
-                            href={`/grupy/${id}?tab=${t}`}
-                            className={`flex-1 rounded-lg py-2 text-center text-sm font-semibold capitalize transition ${
-                                tab === t ? "bg-primary text-primary shadow-xs" : "text-tertiary hover:text-secondary"
+                            key={key}
+                            href={`/grupy/${id}?tab=${key}`}
+                            className={`flex-1 rounded-lg py-2 text-center text-sm font-semibold transition ${
+                                tab === key ? "bg-primary text-primary shadow-xs" : "text-tertiary hover:text-secondary"
                             }`}
                         >
-                            {t === "typowania" ? "Typowania" : "Tabela"}
+                            {label}
                         </a>
                     ))}
                 </div>
 
+                {/* Tab content */}
                 {tab === "typowania" ? (
                     <TypowaniaTab groupId={id} userId={user!.id} />
-                ) : (
+                ) : tab === "tabela" ? (
                     <TabelaTab groupId={id} userId={user!.id} />
+                ) : (
+                    <GrupyTab />
                 )}
             </div>
 
@@ -123,7 +135,6 @@ async function TypowaniaTab({ groupId, userId }: { groupId: string; userId: stri
         const orderA = stageOrder.indexOf(stageA as any);
         const orderB = stageOrder.indexOf(stageB as any);
         if (orderA !== orderB) return orderA - orderB;
-        // sort matchday_1 < matchday_2 < matchday_3 numerically
         if (a.startsWith("matchday_") && b.startsWith("matchday_")) {
             return parseInt(a.split("_")[1]) - parseInt(b.split("_")[1]);
         }
@@ -168,6 +179,139 @@ async function TabelaTab({ groupId, userId }: { groupId: string; userId: string 
                 <h2 className="font-semibold text-primary">Ranking grupy</h2>
             </div>
             <LeaderboardTable entries={entries} currentUserId={userId} />
+        </div>
+    );
+}
+
+type TeamStats = {
+    team: string;
+    played: number;
+    won: number;
+    drawn: number;
+    lost: number;
+    gf: number;
+    ga: number;
+    points: number;
+};
+
+async function GrupyTab() {
+    const supabase = await createClient();
+
+    const { data: matches } = await supabase
+        .from("matches")
+        .select("home_team, away_team, home_score, away_score, status, group_name")
+        .eq("stage", "group")
+        .order("group_name", { ascending: true });
+
+    if (!matches?.length) return <p className="text-sm text-tertiary">Brak danych.</p>;
+
+    // Build standings from finished matches
+    const groups: Record<string, Record<string, TeamStats>> = {};
+
+    for (const match of matches) {
+        const g = match.group_name as string;
+        if (!groups[g]) groups[g] = {};
+
+        const ensure = (team: string) => {
+            if (!groups[g][team]) {
+                groups[g][team] = { team, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, points: 0 };
+            }
+        };
+
+        ensure(match.home_team);
+        ensure(match.away_team);
+
+        if (match.status === "finished" && match.home_score !== null && match.away_score !== null) {
+            const hg = match.home_score as number;
+            const ag = match.away_score as number;
+
+            groups[g][match.home_team].played++;
+            groups[g][match.home_team].gf += hg;
+            groups[g][match.home_team].ga += ag;
+
+            groups[g][match.away_team].played++;
+            groups[g][match.away_team].gf += ag;
+            groups[g][match.away_team].ga += hg;
+
+            if (hg > ag) {
+                groups[g][match.home_team].won++;
+                groups[g][match.home_team].points += 3;
+                groups[g][match.away_team].lost++;
+            } else if (hg < ag) {
+                groups[g][match.away_team].won++;
+                groups[g][match.away_team].points += 3;
+                groups[g][match.home_team].lost++;
+            } else {
+                groups[g][match.home_team].drawn++;
+                groups[g][match.home_team].points += 1;
+                groups[g][match.away_team].drawn++;
+                groups[g][match.away_team].points += 1;
+            }
+        }
+    }
+
+    const sortedGroupNames = Object.keys(groups).sort();
+
+    return (
+        <div className="flex flex-col gap-3">
+            {sortedGroupNames.map((groupName) => {
+                const teams = Object.values(groups[groupName]).sort((a, b) => {
+                    if (b.points !== a.points) return b.points - a.points;
+                    const gdA = a.gf - a.ga;
+                    const gdB = b.gf - b.ga;
+                    if (gdB !== gdA) return gdB - gdA;
+                    if (b.gf !== a.gf) return b.gf - a.gf;
+                    return a.team.localeCompare(b.team);
+                });
+
+                return (
+                    <div key={groupName} className="overflow-hidden rounded-xl border border-secondary bg-primary shadow-xs">
+                        {/* Group header */}
+                        <div className="border-b border-secondary px-4 py-2.5">
+                            <h3 className="text-sm font-bold text-primary">Grupa {groupName}</h3>
+                        </div>
+
+                        {/* Column headers */}
+                        <div className="grid grid-cols-[1fr_28px_28px_28px_32px] items-center border-b border-secondary px-4 py-1.5">
+                            <span className="text-xs text-quaternary">Drużyna</span>
+                            <span className="text-center text-xs text-quaternary">M</span>
+                            <span className="text-center text-xs text-quaternary">G</span>
+                            <span className="text-center text-xs text-quaternary">S</span>
+                            <span className="text-center text-xs font-semibold text-quaternary">Pkt</span>
+                        </div>
+
+                        {/* Team rows */}
+                        {teams.map((team, idx) => {
+                            const flagUrl = getFlagUrl(team.team);
+                            return (
+                                <div
+                                    key={team.team}
+                                    className={`grid grid-cols-[1fr_28px_28px_28px_32px] items-center px-4 py-2 ${
+                                        idx < teams.length - 1 ? "border-b border-secondary" : ""
+                                    }`}
+                                >
+                                    <div className="flex min-w-0 items-center gap-2">
+                                        {flagUrl ? (
+                                            <img
+                                                src={flagUrl}
+                                                alt={team.team}
+                                                className="size-5 shrink-0 rounded"
+                                            />
+                                        ) : (
+                                            <div className="size-5 shrink-0 rounded bg-secondary" />
+                                        )}
+                                        <span className="truncate text-sm text-primary">{team.team}</span>
+                                    </div>
+                                    <span className="text-center text-sm tabular-nums text-primary">{team.played}</span>
+                                    <span className="text-center text-sm tabular-nums text-primary">{team.gf}</span>
+                                    <span className="text-center text-sm tabular-nums text-primary">{team.ga}</span>
+                                    <span className="text-center text-sm font-bold tabular-nums text-primary">{team.points}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                );
+            })}
         </div>
     );
 }
