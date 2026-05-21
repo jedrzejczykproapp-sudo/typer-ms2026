@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Check, Lock01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { upsertPrediction } from "@/actions/prediction-actions";
@@ -76,15 +76,6 @@ export function PredictionCard({ match, groupId, prediction }: PredictionCardPro
     const [localPrediction, setLocalPrediction] = useState(prediction);
     const [saved, setSaved] = useState(false);
     const [isPending, startTransition] = useTransition();
-
-    // Sync with server data when prediction prop arrives/changes (e.g. after RSC re-render)
-    useEffect(() => {
-        if (prediction && !saved) {
-            setLocalPrediction(prediction);
-            setHomeScore(prediction.predicted_home);
-            setAwayScore(prediction.predicted_away);
-        }
-    }, [prediction?.updated_at]); // eslint-disable-line react-hooks/exhaustive-deps
 
     function handleSave() {
         startTransition(async () => {

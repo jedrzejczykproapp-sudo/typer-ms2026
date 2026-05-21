@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getMatchesWithPredictions, getLeaderboard } from "@/actions/prediction-actions";
-import { getGroupWithMembers } from "@/actions/group-actions";
 import { PredictionCard } from "@/components/app/prediction-card";
 import { LeaderboardTable } from "@/components/app/leaderboard-table";
 import { BottomNav } from "@/components/app/bottom-nav";
@@ -44,21 +43,18 @@ export default async function GroupPage({
         data: { user },
     } = await supabase.auth.getUser();
 
-    const [{ data: group }, { members }] = await Promise.all([
+    const [{ data: group }, { data: members }] = await Promise.all([
         supabase.from("groups").select("*").eq("id", id).single(),
-        getGroupWithMembers(id),
+        supabase
+            .from("group_members")
+            .select("user_id, joined_at, profiles(id, display_name, avatar_url)")
+            .eq("group_id", id),
     ]);
 
     if (!group) notFound();
 
-    const isMember = await supabase
-        .from("group_members")
-        .select("id")
-        .eq("group_id", id)
-        .eq("user_id", user!.id)
-        .single()
-        .then(({ data }) => !!data);
-
+    const memberList = members ?? [];
+    const isMember = memberList.some((m: any) => m.user_id === user!.id);
     if (!isMember) notFound();
 
     return (
@@ -67,7 +63,7 @@ export default async function GroupPage({
                 <div className="flex items-start justify-between gap-3">
                     <div>
                         <h1 className="text-xl font-bold text-primary">{group.name}</h1>
-                        <p className="mt-0.5 text-xs text-tertiary">{members.length} uczestników</p>
+                        <p className="mt-0.5 text-xs text-tertiary">{memberList.length} uczestników</p>
                     </div>
                     <GroupSettingsMenu
                         groupId={id}
@@ -75,7 +71,7 @@ export default async function GroupPage({
                         groupName={group.name}
                         isAdmin={group.created_by === user!.id}
                         currentUserId={user!.id}
-                        members={members as any}
+                        members={memberList as any}
                         createdBy={group.created_by}
                     />
                 </div>
