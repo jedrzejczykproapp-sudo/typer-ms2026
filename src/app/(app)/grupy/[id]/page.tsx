@@ -43,19 +43,14 @@ export default async function GroupPage({
         data: { user },
     } = await supabase.auth.getUser();
 
-    const [{ data: group }, { data: members }] = await Promise.all([
+    const [{ data: group }, { count: memberCount }, memberCheck] = await Promise.all([
         supabase.from("groups").select("*").eq("id", id).single(),
-        supabase
-            .from("group_members")
-            .select("user_id, joined_at, profiles(id, display_name, avatar_url)")
-            .eq("group_id", id),
+        supabase.from("group_members").select("id", { count: "exact", head: true }).eq("group_id", id),
+        supabase.from("group_members").select("id").eq("group_id", id).eq("user_id", user!.id).single(),
     ]);
 
     if (!group) notFound();
-
-    const memberList = members ?? [];
-    const isMember = memberList.some((m: any) => m.user_id === user!.id);
-    if (!isMember) notFound();
+    if (!memberCheck.data) notFound();
 
     return (
         <>
@@ -63,7 +58,7 @@ export default async function GroupPage({
                 <div className="flex items-start justify-between gap-3">
                     <div>
                         <h1 className="text-xl font-bold text-primary">{group.name}</h1>
-                        <p className="mt-0.5 text-xs text-tertiary">{memberList.length} uczestników</p>
+                        <p className="mt-0.5 text-xs text-tertiary">{memberCount ?? 0} uczestników</p>
                     </div>
                     <GroupSettingsMenu
                         groupId={id}
@@ -71,7 +66,6 @@ export default async function GroupPage({
                         groupName={group.name}
                         isAdmin={group.created_by === user!.id}
                         currentUserId={user!.id}
-                        members={memberList as any}
                         createdBy={group.created_by}
                     />
                 </div>

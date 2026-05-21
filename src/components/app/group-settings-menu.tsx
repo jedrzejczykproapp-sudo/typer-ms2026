@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Check, ChevronLeft, Copy01, Edit01, Trash01, Users01, X } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { Input } from "@/components/base/input/input";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { useClipboard } from "@/hooks/use-clipboard";
-import { removeMember, renameGroup } from "@/actions/group-actions";
+import { getGroupMembers, removeMember, renameGroup } from "@/actions/group-actions";
 import { cx } from "@/utils/cx";
 
 interface Member {
@@ -21,7 +21,6 @@ interface GroupSettingsMenuProps {
     groupName: string;
     isAdmin: boolean;
     currentUserId: string;
-    members: Member[];
     createdBy: string;
 }
 
@@ -42,21 +41,16 @@ export function GroupSettingsMenu({
     groupName,
     isAdmin,
     currentUserId,
-    members: initialMembers,
     createdBy,
 }: GroupSettingsMenuProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [sheet, setSheet] = useState<Sheet>("options");
-    const [members, setMembers] = useState(initialMembers);
+    const [members, setMembers] = useState<Member[]>([]);
+    const [membersLoading, setMembersLoading] = useState(false);
     const [isRenaming, setIsRenaming] = useState(false);
     const [renameError, setRenameError] = useState<string | null>(null);
     const [removingId, setRemovingId] = useState<string | null>(null);
     const clipboard = useClipboard();
-
-    // Sync members when server re-renders with fresh data
-    useEffect(() => {
-        setMembers(initialMembers);
-    }, [initialMembers.length]);
 
     function openSheet() {
         setSheet("options");
@@ -65,6 +59,14 @@ export function GroupSettingsMenu({
 
     function close() {
         setIsOpen(false);
+    }
+
+    async function openMembers() {
+        setSheet("members");
+        setMembersLoading(true);
+        const data = await getGroupMembers(groupId);
+        setMembers(data as Member[]);
+        setMembersLoading(false);
     }
 
     async function handleRename(e: React.FormEvent<HTMLFormElement>) {
@@ -98,7 +100,6 @@ export function GroupSettingsMenu({
 
     return (
         <>
-            {/* Trigger button — three dots */}
             <button
                 onClick={openSheet}
                 className="flex size-8 items-center justify-center rounded-lg text-fg-quaternary transition hover:bg-secondary hover:text-fg-tertiary"
@@ -109,12 +110,9 @@ export function GroupSettingsMenu({
 
             {isOpen && (
                 <>
-                    {/* Backdrop */}
                     <div className="fixed inset-0 z-50 bg-overlay/50" onClick={close} />
 
-                    {/* Bottom sheet */}
                     <div className="fixed inset-x-0 bottom-0 z-50 mx-auto max-w-2xl rounded-t-2xl bg-primary shadow-xl ring-1 ring-secondary">
-                        {/* Header */}
                         <div className="flex items-center gap-2 border-b border-secondary px-4 py-3">
                             {sheet !== "options" && (
                                 <button
@@ -133,9 +131,7 @@ export function GroupSettingsMenu({
                             </button>
                         </div>
 
-                        {/* Content */}
                         <div className="px-4 py-3 pb-8">
-                            {/* Main options */}
                             {sheet === "options" && (
                                 <div className="flex flex-col">
                                     <button
@@ -166,19 +162,15 @@ export function GroupSettingsMenu({
                                     )}
 
                                     <button
-                                        onClick={() => setSheet("members")}
+                                        onClick={openMembers}
                                         className="flex items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-secondary"
                                     >
                                         <Users01 className="size-5 shrink-0 text-fg-tertiary" />
-                                        <div>
-                                            <p className="text-sm font-medium text-primary">Członkowie grupy</p>
-                                            <p className="text-xs text-tertiary">{members.length} uczestników</p>
-                                        </div>
+                                        <p className="text-sm font-medium text-primary">Członkowie grupy</p>
                                     </button>
                                 </div>
                             )}
 
-                            {/* Rename form */}
                             {sheet === "rename" && (
                                 <form onSubmit={handleRename} className="flex flex-col gap-4">
                                     <Input name="name" label="Nazwa grupy" defaultValue={groupName} isRequired />
@@ -193,46 +185,47 @@ export function GroupSettingsMenu({
                                 </form>
                             )}
 
-                            {/* Members list */}
                             {sheet === "members" && (
                                 <div className="flex max-h-72 flex-col gap-1 overflow-y-auto">
-                                    {members.map((member) => {
-                                        const name = (member.profiles as any)?.display_name ?? "Anonim";
-                                        const isCreator = member.user_id === createdBy;
-                                        const isMe = member.user_id === currentUserId;
-                                        const canRemove = isAdmin && !isCreator && !isMe;
+                                    {membersLoading ? (
+                                        <p className="py-6 text-center text-sm text-tertiary">Ładowanie...</p>
+                                    ) : (
+                                        members.map((member) => {
+                                            const name = (member.profiles as any)?.display_name ?? "Anonim";
+                                            const isCreator = member.user_id === createdBy;
+                                            const isMe = member.user_id === currentUserId;
+                                            const canRemove = isAdmin && !isCreator && !isMe;
 
-                                        return (
-                                            <div key={member.user_id} className="flex items-center gap-3 rounded-xl px-3 py-2.5">
-                                                <Avatar initials={initials(name)} size="sm" />
-                                                <div className="min-w-0 flex-1">
-                                                    <p className="truncate text-sm font-medium text-primary">
-                                                        {name}
-                                                        {isMe && (
-                                                            <span className="ml-1 text-xs text-tertiary">(Ty)</span>
+                                            return (
+                                                <div key={member.user_id} className="flex items-center gap-3 rounded-xl px-3 py-2.5">
+                                                    <Avatar initials={initials(name)} size="sm" />
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="truncate text-sm font-medium text-primary">
+                                                            {name}
+                                                            {isMe && <span className="ml-1 text-xs text-tertiary">(Ty)</span>}
+                                                        </p>
+                                                        {isCreator && (
+                                                            <p className="text-xs font-medium text-brand-secondary">Admin</p>
                                                         )}
-                                                    </p>
-                                                    {isCreator && (
-                                                        <p className="text-xs font-medium text-brand-secondary">Admin</p>
+                                                    </div>
+                                                    {canRemove && (
+                                                        <button
+                                                            onClick={() => handleRemoveMember(member.user_id)}
+                                                            disabled={removingId === member.user_id}
+                                                            className={cx(
+                                                                "rounded-lg p-1.5 text-fg-quaternary transition",
+                                                                "hover:bg-error-primary hover:text-error-primary",
+                                                                "disabled:cursor-not-allowed disabled:opacity-40",
+                                                            )}
+                                                            aria-label={`Usuń ${name}`}
+                                                        >
+                                                            <Trash01 className="size-4" />
+                                                        </button>
                                                     )}
                                                 </div>
-                                                {canRemove && (
-                                                    <button
-                                                        onClick={() => handleRemoveMember(member.user_id)}
-                                                        disabled={removingId === member.user_id}
-                                                        className={cx(
-                                                            "rounded-lg p-1.5 text-fg-quaternary transition",
-                                                            "hover:bg-error-primary hover:text-error-primary",
-                                                            "disabled:cursor-not-allowed disabled:opacity-40",
-                                                        )}
-                                                        aria-label={`Usuń ${name}`}
-                                                    >
-                                                        <Trash01 className="size-4" />
-                                                    </button>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
+                                            );
+                                        })
+                                    )}
                                 </div>
                             )}
                         </div>

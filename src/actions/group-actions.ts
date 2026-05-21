@@ -109,6 +109,17 @@ export async function removeMember(groupId: string, memberId: string) {
     return { success: true };
 }
 
+export async function getGroupMembers(groupId: string) {
+    const supabase = await createClient();
+
+    const { data } = await supabase
+        .from("group_members")
+        .select("user_id, joined_at, profiles(id, display_name, avatar_url)")
+        .eq("group_id", groupId);
+
+    return data ?? [];
+}
+
 export async function getGroupWithMembers(groupId: string) {
     const supabase = await createClient();
 

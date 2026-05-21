@@ -122,18 +122,14 @@ export function PredictionCard({ match, groupId, prediction }: PredictionCardPro
             {isTbd ? (
                 <p className="py-2 text-center text-sm text-tertiary">Mecz do ustalenia po fazie grupowej</p>
             ) : (
-                <div className="flex items-center justify-between gap-2">
-                    <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
-                        <span className="text-2xl">{match.home_flag}</span>
-                        <span className="text-center text-sm font-semibold text-primary leading-tight">{match.home_team}</span>
-                    </div>
-
+                <div className="flex flex-col items-center gap-3">
+                    {/* Score row */}
                     <div className="flex flex-col items-center gap-2">
                         {isFinished ? (
-                            <div className="flex items-center gap-1">
-                                <span className="text-2xl font-bold text-primary">{match.home_score}</span>
-                                <span className="text-lg text-tertiary">:</span>
-                                <span className="text-2xl font-bold text-primary">{match.away_score}</span>
+                            <div className="flex items-center gap-2">
+                                <span className="text-3xl font-bold text-primary">{match.home_score}</span>
+                                <span className="text-xl text-tertiary">:</span>
+                                <span className="text-3xl font-bold text-primary">{match.away_score}</span>
                             </div>
                         ) : isLocked ? (
                             <div className="flex items-center gap-1.5 text-tertiary">
@@ -165,15 +161,22 @@ export function PredictionCard({ match, groupId, prediction }: PredictionCardPro
                         )}
 
                         {isFinished && hasPrediction && (
-                            <div className="text-center text-xs text-tertiary">
+                            <p className="text-xs text-tertiary">
                                 Twój typ: {localPrediction!.predicted_home}:{localPrediction!.predicted_away}
-                            </div>
+                            </p>
                         )}
                     </div>
 
-                    <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
-                        <span className="text-2xl">{match.away_flag}</span>
-                        <span className="text-center text-sm font-semibold text-primary leading-tight">{match.away_team}</span>
+                    {/* Teams row */}
+                    <div className="flex w-full items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <span className="text-2xl">{match.home_flag}</span>
+                            <span className="text-sm font-semibold text-primary">{match.home_team}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-primary">{match.away_team}</span>
+                            <span className="text-2xl">{match.away_flag}</span>
+                        </div>
                     </div>
                 </div>
             )}
