@@ -49,8 +49,63 @@ const TEAM_TO_CODE: Record<string, string> = {
     Uzbekistan: "uz",
 };
 
+const TEAM_TO_PL: Record<string, string> = {
+    Algeria: "Algieria",
+    Argentina: "Argentyna",
+    Australia: "Australia",
+    Austria: "Austria",
+    Belgium: "Belgia",
+    "Bosnia & Herzegovina": "Bośnia i Hercegowina",
+    Brazil: "Brazylia",
+    Canada: "Kanada",
+    "Cape Verde": "Wyspy Zielonego Przylądka",
+    Colombia: "Kolumbia",
+    Croatia: "Chorwacja",
+    "Curaçao": "Curaçao",
+    "Czech Republic": "Czechy",
+    "DR Congo": "DR Kongo",
+    Ecuador: "Ekwador",
+    Egypt: "Egipt",
+    England: "Anglia",
+    France: "Francja",
+    Germany: "Niemcy",
+    Ghana: "Ghana",
+    Haiti: "Haiti",
+    Iran: "Iran",
+    Iraq: "Irak",
+    "Ivory Coast": "Wybrzeże Kości Słoniowej",
+    Japan: "Japonia",
+    Jordan: "Jordania",
+    Mexico: "Meksyk",
+    Morocco: "Maroko",
+    Netherlands: "Holandia",
+    "New Zealand": "Nowa Zelandia",
+    Norway: "Norwegia",
+    Panama: "Panama",
+    Paraguay: "Paragwaj",
+    Portugal: "Portugalia",
+    Qatar: "Katar",
+    "Saudi Arabia": "Arabia Saudyjska",
+    Scotland: "Szkocja",
+    Senegal: "Senegal",
+    "South Africa": "RPA",
+    "South Korea": "Korea Płd.",
+    Spain: "Hiszpania",
+    Sweden: "Szwecja",
+    Switzerland: "Szwajcaria",
+    Tunisia: "Tunezja",
+    Turkey: "Turcja",
+    USA: "USA",
+    Uruguay: "Urugwaj",
+    Uzbekistan: "Uzbekistan",
+};
+
 export function getFlagUrl(teamName: string): string | null {
     const code = TEAM_TO_CODE[teamName];
     if (!code) return null;
     return `https://cdn.jsdelivr.net/gh/kapowaz/square-flags@master/flags/${code}.svg`;
+}
+
+export function getTeamNamePl(teamName: string): string {
+    return TEAM_TO_PL[teamName] ?? teamName;
 }

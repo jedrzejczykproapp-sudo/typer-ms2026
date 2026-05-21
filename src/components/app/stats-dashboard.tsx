@@ -153,7 +153,7 @@ export function StatsDashboard({ stats }: { stats: UserStats }) {
             {/* 4 stat tiles */}
             <div className="grid grid-cols-2 gap-3">
                 <StatTile label="Obstawione mecze"   value={stats.total}       icon={BarChart01}    delay={0}   />
-                <StatTile label="Dokładne wyniki"    value={stats.exact}       icon={Target01}      delay={80}  accent />
+                <StatTile label="Dokładne wyniki"    value={stats.exact}       icon={Target01}      delay={80}  />
                 <StatTile label="Trafione wyniki"    value={stats.correct}     icon={CheckCircle}   delay={160} />
                 <StatTile label="Grupy"              value={stats.groups}      icon={Users01}       delay={240} />
             </div>

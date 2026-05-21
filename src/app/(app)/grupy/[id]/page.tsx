@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getMatchesWithPredictions, getLeaderboard } from "@/actions/prediction-actions";
 import { getWcOdds } from "@/lib/odds";
-import { getFlagUrl } from "@/lib/flags";
+import { getFlagUrl, getTeamNamePl } from "@/lib/flags";
 import { PredictionCard } from "@/components/app/prediction-card";
 import { LeaderboardTable } from "@/components/app/leaderboard-table";
 import { GroupSettingsMenu } from "@/components/app/group-settings-menu";
@@ -297,7 +297,7 @@ async function GrupyTab() {
                                         ) : (
                                             <div className="size-5 shrink-0 rounded bg-secondary" />
                                         )}
-                                        <span className="truncate text-sm text-primary">{team.team}</span>
+                                        <span className="truncate text-sm text-primary">{getTeamNamePl(team.team)}</span>
                                     </div>
                                     <span className="text-center text-sm tabular-nums text-primary">{team.played}</span>
                                     <span className="text-center text-sm tabular-nums text-primary">{team.gf}</span>

@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { Check, Lock01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { upsertPrediction } from "@/actions/prediction-actions";
-import { getFlagUrl } from "@/lib/flags";
+import { getFlagUrl, getTeamNamePl } from "@/lib/flags";
 import type { Match, Prediction } from "@/types/database";
 import type { MatchOdds } from "@/lib/odds";
 import { cx } from "@/utils/cx";
@@ -186,7 +186,7 @@ export function PredictionCard({ match, groupId, prediction, odds }: PredictionC
                         <div className="flex flex-1 items-center justify-center gap-2.5">
                             <TeamFlag teamName={match.home_team} />
                             <span className="text-sm font-semibold leading-tight text-primary">
-                                {match.home_team}
+                                {getTeamNamePl(match.home_team)}
                             </span>
                         </div>
                         <div className="flex w-8 shrink-0 justify-center">
@@ -195,7 +195,7 @@ export function PredictionCard({ match, groupId, prediction, odds }: PredictionC
                         <div className="flex flex-1 items-center justify-center gap-2.5">
                             <TeamFlag teamName={match.away_team} />
                             <span className="text-sm font-semibold leading-tight text-primary">
-                                {match.away_team}
+                                {getTeamNamePl(match.away_team)}
                             </span>
                         </div>
                     </div>
