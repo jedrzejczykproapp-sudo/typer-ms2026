@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { ChevronRight, Users01 } from "@untitledui/icons";
+import { CalendarCheck01, ChevronRight, Users01 } from "@untitledui/icons";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getMatchesWithPredictions } from "@/actions/prediction-actions";
@@ -181,16 +181,26 @@ async function TypowaniaTab({
 
             {/* Matches or empty state */}
             {sortedKeys.length === 0 ? (
-                <div className="flex flex-col items-center gap-2 rounded-xl border border-secondary bg-primary py-14 text-center">
-                    <p className="text-sm font-semibold text-primary">Brak meczów na dziś</p>
-                    <p className="text-xs text-tertiary">Wróć jutro lub sprawdź wszystkie typowania w grupie.</p>
-                    <Link
-                        href={`/grupy/${activeGroup.id}`}
-                        className="mt-2 flex items-center gap-1 text-xs text-brand-secondary hover:underline"
-                    >
-                        Przejdź do grupy
-                        <ChevronRight className="size-3.5" />
-                    </Link>
+                <div className="flex flex-col items-center gap-5 rounded-2xl border border-secondary bg-primary px-6 py-14 text-center">
+                    <FeaturedIcon icon={CalendarCheck01} color="brand" theme="light" size="lg" />
+                    <div className="flex flex-col gap-1.5">
+                        <p className="text-base font-semibold text-primary">Brak meczów na dziś</p>
+                        <p className="text-sm text-tertiary">
+                            Dzisiaj nie ma zaplanowanych spotkań.
+                            <br />
+                            Zaproś znajomych i typujcie razem!
+                        </p>
+                    </div>
+                    <div className="flex flex-col items-center gap-3 w-full max-w-[240px]">
+                        <CreateGroupModal />
+                        <Link
+                            href={`/grupy/${activeGroup.id}`}
+                            className="flex items-center gap-1 text-sm text-brand-secondary hover:underline"
+                        >
+                            Wszystkie typowania grupy
+                            <ChevronRight className="size-4" />
+                        </Link>
+                    </div>
                 </div>
             ) : (
                 <div className="flex flex-col gap-8">
