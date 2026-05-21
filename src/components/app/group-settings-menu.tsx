@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { Check, ChevronLeft, Copy01, DotsVertical, Edit01, Trash01, Users01, X } from "@untitledui/icons";
+import { useRef, useState } from "react";
+import { Camera01, Check, ChevronLeft, Copy01, DotsVertical, Edit01, Trash01, Users01, X } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Input } from "@/components/base/input/input";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { useClipboard } from "@/hooks/use-clipboard";
+import { createClient } from "@/lib/supabase/client";
 import { getGroupMembers, removeMember, renameGroup } from "@/actions/group-actions";
 import { cx } from "@/utils/cx";
 
@@ -20,12 +21,13 @@ interface GroupSettingsMenuProps {
     groupId: string;
     inviteCode: string;
     groupName: string;
+    currentAvatarUrl: string | null;
     isAdmin: boolean;
     currentUserId: string;
     createdBy: string;
 }
 
-type Sheet = "options" | "rename" | "members";
+type Sheet = "options" | "edit" | "members";
 
 function initials(name: string | null) {
     return (name ?? "?")
@@ -40,6 +42,7 @@ export function GroupSettingsMenu({
     groupId,
     inviteCode,
     groupName,
+    currentAvatarUrl,
     isAdmin,
     currentUserId,
     createdBy,
@@ -48,10 +51,14 @@ export function GroupSettingsMenu({
     const [sheet, setSheet] = useState<Sheet>("options");
     const [members, setMembers] = useState<Member[]>([]);
     const [membersLoading, setMembersLoading] = useState(false);
-    const [isRenaming, setIsRenaming] = useState(false);
-    const [renameError, setRenameError] = useState<string | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
     const [removingId, setRemovingId] = useState<string | null>(null);
+    const [avatarPreview, setAvatarPreview] = useState<string | null>(currentAvatarUrl);
+    const [avatarFile, setAvatarFile] = useState<File | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const clipboard = useClipboard();
+    const supabase = createClient();
 
     function openSheet() {
         setSheet("options");
@@ -62,23 +69,56 @@ export function GroupSettingsMenu({
         setIsOpen(false);
     }
 
+    function openEdit() {
+        setAvatarPreview(currentAvatarUrl);
+        setAvatarFile(null);
+        setSaveError(null);
+        setSheet("edit");
+    }
+
     async function openMembers() {
         setSheet("members");
         setMembersLoading(true);
         const data = await getGroupMembers(groupId);
-        setMembers(data as Member[]);
+        setMembers(data as unknown as Member[]);
         setMembersLoading(false);
     }
 
-    async function handleRename(e: React.FormEvent<HTMLFormElement>) {
+    function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setAvatarFile(file);
+        setAvatarPreview(URL.createObjectURL(file));
+        e.target.value = "";
+    }
+
+    async function handleSave(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
-        setRenameError(null);
-        setIsRenaming(true);
+        setSaveError(null);
+        setIsSaving(true);
+
         const fd = new FormData(e.currentTarget);
-        const result = await renameGroup(groupId, fd.get("name") as string);
-        setIsRenaming(false);
+        let avatarUrl: string | null | undefined = undefined;
+
+        if (avatarFile) {
+            const ext = avatarFile.name.split(".").pop() ?? "jpg";
+            const path = `${groupId}/${Date.now()}.${ext}`;
+            const { data, error } = await supabase.storage
+                .from("group-avatars")
+                .upload(path, avatarFile, { contentType: avatarFile.type, upsert: true });
+            if (error) {
+                setSaveError("Błąd wgrywania zdjęcia");
+                setIsSaving(false);
+                return;
+            }
+            const { data: { publicUrl } } = supabase.storage.from("group-avatars").getPublicUrl(data.path);
+            avatarUrl = publicUrl;
+        }
+
+        const result = await renameGroup(groupId, fd.get("name") as string, avatarUrl);
+        setIsSaving(false);
         if (result?.error) {
-            setRenameError(result.error);
+            setSaveError(result.error);
         } else {
             close();
         }
@@ -95,7 +135,7 @@ export function GroupSettingsMenu({
 
     const sheetTitles: Record<Sheet, string> = {
         options: "Ustawienia grupy",
-        rename: "Edytuj nazwę",
+        edit: "Edytuj grupę",
         members: "Członkowie",
     };
 
@@ -104,7 +144,7 @@ export function GroupSettingsMenu({
             <ButtonUtility
                 icon={DotsVertical}
                 color="secondary"
-                size="md"
+                size="sm"
                 tooltip="Ustawienia grupy"
                 onClick={openSheet}
             />
@@ -154,11 +194,11 @@ export function GroupSettingsMenu({
 
                                     {isAdmin && (
                                         <button
-                                            onClick={() => setSheet("rename")}
+                                            onClick={openEdit}
                                             className="flex items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-secondary"
                                         >
                                             <Edit01 className="size-5 shrink-0 text-fg-tertiary" />
-                                            <p className="text-sm font-medium text-primary">Edytuj nazwę grupy</p>
+                                            <p className="text-sm font-medium text-primary">Edytuj grupę</p>
                                         </button>
                                     )}
 
@@ -172,15 +212,43 @@ export function GroupSettingsMenu({
                                 </div>
                             )}
 
-                            {sheet === "rename" && (
-                                <form onSubmit={handleRename} className="flex flex-col gap-4">
+                            {sheet === "edit" && (
+                                <form onSubmit={handleSave} className="flex flex-col gap-4">
+                                    <div className="flex flex-col items-center gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            className="group relative size-20 shrink-0 overflow-hidden rounded-2xl bg-secondary"
+                                        >
+                                            {avatarPreview ? (
+                                                <img src={avatarPreview} alt="Avatar" className="size-full object-cover" />
+                                            ) : (
+                                                <div className="flex size-full items-center justify-center text-2xl font-bold text-tertiary">
+                                                    {groupName.charAt(0).toUpperCase()}
+                                                </div>
+                                            )}
+                                            <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition group-hover:opacity-100">
+                                                <Camera01 className="size-6 text-white" />
+                                            </div>
+                                        </button>
+                                        <p className="text-xs text-tertiary">Kliknij aby zmienić zdjęcie grupy</p>
+                                        <input
+                                            ref={fileInputRef}
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={handleAvatarChange}
+                                        />
+                                    </div>
+
                                     <Input name="name" label="Nazwa grupy" defaultValue={groupName} isRequired />
-                                    {renameError && (
+
+                                    {saveError && (
                                         <p className="rounded-lg bg-error-primary px-3 py-2 text-sm text-error-primary">
-                                            {renameError}
+                                            {saveError}
                                         </p>
                                     )}
-                                    <Button type="submit" isLoading={isRenaming} showTextWhileLoading className="w-full">
+                                    <Button type="submit" isLoading={isSaving} showTextWhileLoading className="w-full">
                                         Zapisz
                                     </Button>
                                 </form>

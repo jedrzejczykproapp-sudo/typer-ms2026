@@ -68,7 +68,7 @@ export async function getUserGroups() {
     return data?.map((m) => m.groups).filter(Boolean) ?? [];
 }
 
-export async function renameGroup(groupId: string, name: string) {
+export async function renameGroup(groupId: string, name: string, avatarUrl?: string | null) {
     const supabase = await createClient();
     const {
         data: { user },
@@ -82,7 +82,10 @@ export async function renameGroup(groupId: string, name: string) {
     const trimmed = name.trim();
     if (!trimmed) return { error: "Podaj nazwę grupy" };
 
-    const { error } = await supabase.from("groups").update({ name: trimmed }).eq("id", groupId);
+    const update: Record<string, unknown> = { name: trimmed };
+    if (avatarUrl !== undefined) update.avatar_url = avatarUrl;
+
+    const { error } = await supabase.from("groups").update(update).eq("id", groupId);
     if (error) return { error: error.message };
 
     revalidatePath(`/grupy/${groupId}`);

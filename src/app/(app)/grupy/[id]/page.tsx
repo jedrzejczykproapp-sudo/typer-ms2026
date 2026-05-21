@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getMatchesWithPredictions, getLeaderboard } from "@/actions/prediction-actions";
+import { getWcOdds } from "@/lib/odds";
 import { PredictionCard } from "@/components/app/prediction-card";
 import { LeaderboardTable } from "@/components/app/leaderboard-table";
 import { BottomNav } from "@/components/app/bottom-nav";
@@ -56,14 +57,26 @@ export default async function GroupPage({
         <>
             <div className="flex flex-col gap-6">
                 <div className="flex items-start justify-between gap-3">
-                    <div>
-                        <h1 className="text-xl font-bold text-primary">{group.name}</h1>
-                        <p className="mt-0.5 text-xs text-tertiary">{memberCount ?? 0} uczestników</p>
+                    <div className="flex items-center gap-3">
+                        <div className="size-12 shrink-0 overflow-hidden rounded-xl bg-secondary">
+                            {group.avatar_url ? (
+                                <img src={group.avatar_url} alt={group.name} className="size-full object-cover" />
+                            ) : (
+                                <div className="flex size-full items-center justify-center text-xl font-bold text-tertiary">
+                                    {group.name.charAt(0).toUpperCase()}
+                                </div>
+                            )}
+                        </div>
+                        <div>
+                            <h1 className="text-xl font-bold text-primary">{group.name}</h1>
+                            <p className="mt-0.5 text-xs text-tertiary">{memberCount ?? 0} uczestników</p>
+                        </div>
                     </div>
                     <GroupSettingsMenu
                         groupId={id}
                         inviteCode={group.invite_code}
                         groupName={group.name}
+                        currentAvatarUrl={group.avatar_url ?? null}
                         isAdmin={group.created_by === user!.id}
                         currentUserId={user!.id}
                         createdBy={group.created_by}
@@ -97,7 +110,10 @@ export default async function GroupPage({
 }
 
 async function TypowaniaTab({ groupId, userId }: { groupId: string; userId: string }) {
-    const { matches, predictions } = await getMatchesWithPredictions(groupId);
+    const [{ matches, predictions }, oddsMap] = await Promise.all([
+        getMatchesWithPredictions(groupId),
+        getWcOdds(),
+    ]);
 
     const grouped = groupMatchesByStage(matches);
 
@@ -128,6 +144,7 @@ async function TypowaniaTab({ groupId, userId }: { groupId: string; userId: stri
                                     match={match}
                                     groupId={groupId}
                                     prediction={predictions.get(match.id)}
+                                    odds={oddsMap.get(`${match.home_team}|${match.away_team}`)}
                                 />
                             ))}
                         </div>
@@ -142,7 +159,7 @@ async function TabelaTab({ groupId, userId }: { groupId: string; userId: string 
     const entries = await getLeaderboard(groupId);
 
     return (
-        <div className="rounded-xl border border-secondary bg-primary shadow-xs overflow-hidden">
+        <div className="overflow-hidden rounded-xl border border-secondary bg-primary shadow-xs">
             <div className="border-b border-secondary px-4 py-3">
                 <h2 className="font-semibold text-primary">Ranking grupy</h2>
             </div>

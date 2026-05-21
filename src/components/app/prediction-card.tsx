@@ -5,12 +5,14 @@ import { Check, Lock01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { upsertPrediction } from "@/actions/prediction-actions";
 import type { Match, Prediction } from "@/types/database";
+import type { MatchOdds } from "@/lib/odds";
 import { cx } from "@/utils/cx";
 
 interface PredictionCardProps {
     match: Match;
     groupId: string;
     prediction?: Prediction;
+    odds?: MatchOdds;
 }
 
 const stageLabels: Record<string, string> = {
@@ -66,7 +68,7 @@ function ScoreInput({
     );
 }
 
-export function PredictionCard({ match, groupId, prediction }: PredictionCardProps) {
+export function PredictionCard({ match, groupId, prediction, odds }: PredictionCardProps) {
     const isLocked = match.status !== "upcoming";
     const isFinished = match.status === "finished";
     const isTbd = match.home_team === "TBD";
@@ -174,6 +176,24 @@ export function PredictionCard({ match, groupId, prediction }: PredictionCardPro
                     <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
                         <span className="text-2xl">{match.away_flag}</span>
                         <span className="text-center text-sm font-semibold leading-tight text-primary">{match.away_team}</span>
+                    </div>
+                </div>
+            )}
+
+            {odds && !isTbd && (
+                <div className="flex items-center justify-center gap-2 border-t border-secondary pt-3">
+                    <span className="text-xs text-tertiary">Kursy:</span>
+                    <div className="flex gap-2">
+                        {[
+                            { label: "1", value: odds.home },
+                            { label: "X", value: odds.draw },
+                            { label: "2", value: odds.away },
+                        ].map(({ label, value }) => (
+                            <div key={label} className="flex items-center gap-1 rounded-md bg-secondary px-2 py-0.5">
+                                <span className="text-xs text-tertiary">{label}</span>
+                                <span className="text-xs font-semibold tabular-nums text-primary">{value.toFixed(2)}</span>
+                            </div>
+                        ))}
                     </div>
                 </div>
             )}
