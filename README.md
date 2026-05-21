@@ -1,6 +1,6 @@
 # Untitled UI starter kit for Next.js
 
-This is an official Untitled UI starter kit for Next.js. Kickstart your Untitled UI project with Next.js in seconds. 
+This is an official Untitled UI starter kit for Next.js. Kickstart your Untitled UI project with Next.js in seconds.  
 
 ## Untitled UI React
 
