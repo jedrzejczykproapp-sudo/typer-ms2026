@@ -138,6 +138,42 @@ export async function getGroupMembers(groupId: string) {
     }));
 }
 
+export async function deleteGroup(groupId: string) {
+    const supabase = await createClient();
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return { error: "Nie jesteś zalogowany" };
+
+    const { data: group } = await supabase.from("groups").select("created_by").eq("id", groupId).single();
+    if (!group || group.created_by !== user.id) return { error: "Brak uprawnień" };
+
+    const { error } = await supabase.from("groups").delete().eq("id", groupId);
+    if (error) return { error: error.message };
+
+    revalidatePath("/grupy");
+    return { success: true };
+}
+
+export async function leaveGroup(groupId: string) {
+    const supabase = await createClient();
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return { error: "Nie jesteś zalogowany" };
+
+    const { data: group } = await supabase.from("groups").select("created_by").eq("id", groupId).single();
+    if (group?.created_by === user.id) return { error: "Admin nie może opuścić grupy — usuń grupę lub przekaż prawa." };
+
+    const { error } = await supabase.from("group_members").delete().eq("group_id", groupId).eq("user_id", user.id);
+    if (error) return { error: error.message };
+
+    revalidatePath("/grupy");
+    return { success: true };
+}
+
 export async function getGroupWithMembers(groupId: string) {
     const supabase = await createClient();
 

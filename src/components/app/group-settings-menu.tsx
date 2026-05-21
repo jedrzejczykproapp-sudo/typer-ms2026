@@ -1,14 +1,15 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
-import { Camera01, Check, ChevronLeft, Copy01, DotsVertical, Edit01, Trash01, Users01, X } from "@untitledui/icons";
+import { Camera01, Check, ChevronLeft, Copy01, DotsVertical, Edit01, LogOut01, Trash01, Users01, X } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Input } from "@/components/base/input/input";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { useClipboard } from "@/hooks/use-clipboard";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { getGroupMembers, removeMember, renameGroup } from "@/actions/group-actions";
+import { deleteGroup, getGroupMembers, leaveGroup, removeMember, renameGroup } from "@/actions/group-actions";
 import { cx } from "@/utils/cx";
 
 // ─── Avatar crop picker ───────────────────────────────────────────────────────
@@ -221,7 +222,7 @@ interface GroupSettingsMenuProps {
     createdBy: string;
 }
 
-type Sheet = "options" | "edit" | "members";
+type Sheet = "options" | "edit" | "members" | "confirmDelete" | "confirmLeave";
 
 function initials(name: string | null) {
     return (name ?? "?")
@@ -251,8 +252,12 @@ export function GroupSettingsMenu({
     const [saveError, setSaveError] = useState<string | null>(null);
     const [removingId, setRemovingId] = useState<string | null>(null);
     const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [isLeaving, setIsLeaving] = useState(false);
+    const [actionError, setActionError] = useState<string | null>(null);
     const cropRef = useRef<AvatarCropHandle>(null);
     const clipboard = useClipboard();
+    const router = useRouter();
     const supabase = createClient();
 
     function openSheet() {
@@ -321,10 +326,36 @@ export function GroupSettingsMenu({
         setRemovingId(null);
     }
 
+    async function handleDeleteGroup() {
+        setIsDeleting(true);
+        setActionError(null);
+        const result = await deleteGroup(groupId);
+        setIsDeleting(false);
+        if (result?.error) {
+            setActionError(result.error);
+        } else {
+            router.push("/grupy");
+        }
+    }
+
+    async function handleLeaveGroup() {
+        setIsLeaving(true);
+        setActionError(null);
+        const result = await leaveGroup(groupId);
+        setIsLeaving(false);
+        if (result?.error) {
+            setActionError(result.error);
+        } else {
+            router.push("/grupy");
+        }
+    }
+
     const sheetTitles: Record<Sheet, string> = {
         options: "Ustawienia grupy",
         edit: "Edytuj grupę",
         members: "Członkowie",
+        confirmDelete: "Usuń grupę",
+        confirmLeave: "Opuść grupę",
     };
 
     return (
@@ -360,7 +391,7 @@ export function GroupSettingsMenu({
                             </button>
                         </div>
 
-                        <div className="max-h-[70dvh] overflow-y-auto px-4 py-3 pb-8">
+                        <div className="max-h-[70dvh] overflow-y-auto px-4 py-4 pb-8">
                             {sheet === "options" && (
                                 <div className="flex flex-col">
                                     <button
@@ -397,6 +428,28 @@ export function GroupSettingsMenu({
                                         <Users01 className="size-5 shrink-0 text-fg-tertiary" />
                                         <p className="text-sm font-medium text-primary">Członkowie grupy</p>
                                     </button>
+
+                                    <div className="my-1 border-t border-secondary" />
+
+                                    {!isAdmin && (
+                                        <button
+                                            onClick={() => { setActionError(null); setSheet("confirmLeave"); }}
+                                            className="flex items-center gap-3 rounded-xl px-3 py-3 text-left text-error-primary transition hover:bg-error-primary"
+                                        >
+                                            <LogOut01 className="size-5 shrink-0" />
+                                            <p className="text-sm font-medium">Opuść grupę</p>
+                                        </button>
+                                    )}
+
+                                    {isAdmin && (
+                                        <button
+                                            onClick={() => { setActionError(null); setSheet("confirmDelete"); }}
+                                            className="flex items-center gap-3 rounded-xl px-3 py-3 text-left text-error-primary transition hover:bg-error-primary"
+                                        >
+                                            <Trash01 className="size-5 shrink-0" />
+                                            <p className="text-sm font-medium">Usuń grupę</p>
+                                        </button>
+                                    )}
                                 </div>
                             )}
 
@@ -489,6 +542,65 @@ export function GroupSettingsMenu({
                                             );
                                         })
                                     )}
+                                </div>
+                            )}
+                            {sheet === "confirmDelete" && (
+                                <div className="flex flex-col gap-4">
+                                    <div className="rounded-xl border border-error-primary bg-error-primary px-4 py-3">
+                                        <p className="text-sm font-semibold text-error-primary">Tej operacji nie można cofnąć.</p>
+                                        <p className="mt-1 text-sm text-error-secondary">
+                                            Usunięcie grupy spowoduje trwałe usunięcie wszystkich typowań i danych rankingowych.
+                                        </p>
+                                    </div>
+                                    {actionError && (
+                                        <p className="rounded-lg bg-error-primary px-3 py-2 text-sm text-error-primary">{actionError}</p>
+                                    )}
+                                    <Button
+                                        color="primary-destructive"
+                                        className="w-full"
+                                        isLoading={isDeleting}
+                                        showTextWhileLoading
+                                        onClick={handleDeleteGroup}
+                                    >
+                                        Tak, usuń grupę
+                                    </Button>
+                                    <button
+                                        onClick={() => setSheet("options")}
+                                        disabled={isDeleting}
+                                        className="w-full rounded-xl border border-secondary py-2.5 text-sm font-semibold text-secondary transition hover:bg-secondary disabled:opacity-40"
+                                    >
+                                        Anuluj
+                                    </button>
+                                </div>
+                            )}
+
+                            {sheet === "confirmLeave" && (
+                                <div className="flex flex-col gap-4">
+                                    <div className="rounded-xl border border-error-primary bg-error-primary px-4 py-3">
+                                        <p className="text-sm font-semibold text-error-primary">Opuścić tę grupę?</p>
+                                        <p className="mt-1 text-sm text-error-secondary">
+                                            Stracisz dostęp do typowań i rankingu tej grupy. Możesz dołączyć ponownie używając kodu zaproszenia.
+                                        </p>
+                                    </div>
+                                    {actionError && (
+                                        <p className="rounded-lg bg-error-primary px-3 py-2 text-sm text-error-primary">{actionError}</p>
+                                    )}
+                                    <Button
+                                        color="primary-destructive"
+                                        className="w-full"
+                                        isLoading={isLeaving}
+                                        showTextWhileLoading
+                                        onClick={handleLeaveGroup}
+                                    >
+                                        Tak, opuść grupę
+                                    </Button>
+                                    <button
+                                        onClick={() => setSheet("options")}
+                                        disabled={isLeaving}
+                                        className="w-full rounded-xl border border-secondary py-2.5 text-sm font-semibold text-secondary transition hover:bg-secondary disabled:opacity-40"
+                                    >
+                                        Anuluj
+                                    </button>
                                 </div>
                             )}
                         </div>
