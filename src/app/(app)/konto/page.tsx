@@ -64,6 +64,11 @@ export default async function KontoPage({
         avatar_url: string | null;
     }[];
 
+    // Resolve active group at page level so the header is always rendered
+    const activeGroup = groups.length > 0
+        ? (groupParam ? groups.find((g) => g.id === groupParam) ?? groups[0] : groups[0])
+        : null;
+
     return (
         <div className="flex flex-col gap-3">
             {/* Tabs */}
@@ -81,8 +86,42 @@ export default async function KontoPage({
                 ))}
             </div>
 
+            {/* Group header — always visible on Typowania tab when user has groups */}
+            {tab === "typowania" && activeGroup && (
+                <>
+                    {/* Group selector (multiple groups) */}
+                    {groups.length > 1 && (
+                        <div className="flex gap-2 overflow-x-auto pb-0.5">
+                            {groups.map((g) => (
+                                <a
+                                    key={g.id}
+                                    href={`/konto?tab=typowania&group=${g.id}`}
+                                    className={`shrink-0 rounded-full px-3 py-1.5 text-sm font-medium transition ${
+                                        g.id === activeGroup.id
+                                            ? "bg-brand-solid text-white"
+                                            : "bg-secondary text-secondary hover:bg-secondary_hover"
+                                    }`}
+                                >
+                                    {g.name}
+                                </a>
+                            ))}
+                        </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold text-tertiary">{activeGroup.name}</p>
+                        <Link
+                            href={`/grupy/${activeGroup.id}`}
+                            className="flex items-center gap-1 text-sm text-brand-secondary hover:underline"
+                        >
+                            Ranking &amp; Tabela
+                            <ChevronRight className="size-4" />
+                        </Link>
+                    </div>
+                </>
+            )}
+
             {tab === "typowania" ? (
-                <TypowaniaTab userId={user.id} groups={groups} activeGroupId={groupParam ?? null} />
+                <TypowaniaTab userId={user.id} groups={groups} activeGroup={activeGroup} />
             ) : (
                 <GrupyTab userId={user.id} groups={groups} />
             )}
@@ -95,13 +134,13 @@ export default async function KontoPage({
 async function TypowaniaTab({
     userId,
     groups,
-    activeGroupId,
+    activeGroup,
 }: {
     userId: string;
     groups: { id: string; name: string; avatar_url: string | null }[];
-    activeGroupId: string | null;
+    activeGroup: { id: string; name: string; avatar_url: string | null } | null;
 }) {
-    if (!groups.length) {
+    if (!groups.length || !activeGroup) {
         return (
             <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed border-secondary bg-primary py-16 text-center">
                 <FeaturedIcon icon={Users01} color="brand" theme="light" size="lg" />
@@ -118,9 +157,6 @@ async function TypowaniaTab({
             </div>
         );
     }
-
-    const activeGroup =
-        (activeGroupId ? groups.find((g) => g.id === activeGroupId) : null) ?? groups[0];
 
     const [{ matches, predictions }, oddsMap] = await Promise.all([
         getMatchesWithPredictions(activeGroup.id),
@@ -144,93 +180,58 @@ async function TypowaniaTab({
         return a.localeCompare(b);
     });
 
-    return (
-        <div className="flex flex-col gap-4">
-            {/* Group selector (multiple groups) */}
-            {groups.length > 1 && (
-                <div className="flex gap-2 overflow-x-auto pb-0.5">
-                    {groups.map((g) => (
-                        <a
-                            key={g.id}
-                            href={`/konto?tab=typowania&group=${g.id}`}
-                            className={`shrink-0 rounded-full px-3 py-1.5 text-sm font-medium transition ${
-                                g.id === activeGroup.id
-                                    ? "bg-brand-solid text-white"
-                                    : "bg-secondary text-secondary hover:bg-secondary_hover"
-                            }`}
-                        >
-                            {g.name}
-                        </a>
-                    ))}
+    // No matches today
+    if (sortedKeys.length === 0) {
+        return (
+            <div className="flex flex-col items-center gap-5 rounded-2xl border border-secondary bg-primary px-6 py-14 text-center">
+                <FeaturedIcon icon={CalendarCheck01} color="brand" theme="light" size="lg" />
+                <div className="flex flex-col gap-1.5">
+                    <p className="text-base font-semibold text-primary">Brak meczów na dziś</p>
+                    <p className="text-sm text-tertiary">
+                        Dzisiaj nie ma zaplanowanych spotkań.
+                        <br />
+                        Zaproś znajomych i typujcie razem!
+                    </p>
                 </div>
-            )}
-
-            {/* Group header */}
-            <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold uppercase tracking-wider text-tertiary">
-                    {activeGroup.name}
-                </p>
+                <CreateGroupModal />
                 <Link
                     href={`/grupy/${activeGroup.id}`}
-                    className="flex items-center gap-1 text-xs text-brand-secondary hover:underline"
+                    className="flex items-center gap-1 text-sm text-brand-secondary hover:underline"
                 >
-                    Ranking & Tabela
-                    <ChevronRight className="size-3.5" />
+                    Wszystkie typowania grupy
+                    <ChevronRight className="size-4" />
                 </Link>
             </div>
+        );
+    }
 
-            {/* Matches or empty state */}
-            {sortedKeys.length === 0 ? (
-                <div className="flex flex-col items-center gap-5 rounded-2xl border border-secondary bg-primary px-6 py-14 text-center">
-                    <FeaturedIcon icon={CalendarCheck01} color="brand" theme="light" size="lg" />
-                    <div className="flex flex-col gap-1.5">
-                        <p className="text-base font-semibold text-primary">Brak meczów na dziś</p>
-                        <p className="text-sm text-tertiary">
-                            Dzisiaj nie ma zaplanowanych spotkań.
-                            <br />
-                            Zaproś znajomych i typujcie razem!
-                        </p>
-                    </div>
-                    <div className="flex flex-col items-center gap-3 w-full max-w-[240px]">
-                        <CreateGroupModal />
-                        <Link
-                            href={`/grupy/${activeGroup.id}`}
-                            className="flex items-center gap-1 text-sm text-brand-secondary hover:underline"
-                        >
-                            Wszystkie typowania grupy
-                            <ChevronRight className="size-4" />
-                        </Link>
-                    </div>
-                </div>
-            ) : (
-                <div className="flex flex-col gap-8">
-                    {sortedKeys.map((key) => {
-                        const sectionMatches = grouped[key];
-                        const isMatchday = key.startsWith("matchday_");
-                        const matchdayNum = isMatchday ? key.split("_")[1] : null;
-                        const label = isMatchday ? `Kolejka ${matchdayNum}` : stageLabels[key];
+    return (
+        <div className="flex flex-col gap-8">
+            {sortedKeys.map((key) => {
+                const sectionMatches = grouped[key];
+                const isMatchday = key.startsWith("matchday_");
+                const matchdayNum = isMatchday ? key.split("_")[1] : null;
+                const label = isMatchday ? `Kolejka ${matchdayNum}` : stageLabels[key];
 
-                        return (
-                            <section key={key}>
-                                <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-tertiary">
-                                    {label}
-                                </h2>
-                                <div className="flex flex-col gap-3">
-                                    {sectionMatches.map((match) => (
-                                        <PredictionCard
-                                            key={match.id}
-                                            match={match}
-                                            groupId={activeGroup.id}
-                                            prediction={predictions.get(match.id)}
-                                            odds={oddsMap.get(`${match.home_team}|${match.away_team}`)}
-                                        />
-                                    ))}
-                                </div>
-                            </section>
-                        );
-                    })}
-                </div>
-            )}
+                return (
+                    <section key={key}>
+                        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-tertiary">
+                            {label}
+                        </h2>
+                        <div className="flex flex-col gap-3">
+                            {sectionMatches.map((match) => (
+                                <PredictionCard
+                                    key={match.id}
+                                    match={match}
+                                    groupId={activeGroup.id}
+                                    prediction={predictions.get(match.id)}
+                                    odds={oddsMap.get(`${match.home_team}|${match.away_team}`)}
+                                />
+                            ))}
+                        </div>
+                    </section>
+                );
+            })}
         </div>
     );
 }
