@@ -70,6 +70,16 @@ export default async function KontoPage({
         ? (groupParam ? groups.find((g) => g.id === groupParam) ?? groups[0] : groups[0])
         : null;
 
+    // Check if there are matches today (upcoming or live) for the pulsing dot
+    const todayUtc = new Date().toISOString().slice(0, 10);
+    const { count: todayMatchCount } = await supabase
+        .from("matches")
+        .select("id", { count: "exact", head: true })
+        .gte("match_date", `${todayUtc}T00:00:00`)
+        .lte("match_date", `${todayUtc}T23:59:59`)
+        .in("status", ["upcoming", "live"]);
+    const hasTodayMatches = (todayMatchCount ?? 0) > 0;
+
     return (
         <div className="flex flex-col gap-3">
             {/* Tabs */}
@@ -78,11 +88,14 @@ export default async function KontoPage({
                     <a
                         key={key}
                         href={`/konto?tab=${key}`}
-                        className={`flex-1 rounded-lg py-2 text-center text-sm font-semibold transition ${
+                        className={`relative flex-1 rounded-lg py-2 text-center text-sm font-semibold transition ${
                             tab === key ? "bg-primary text-primary shadow-xs" : "text-tertiary hover:text-secondary"
                         }`}
                     >
                         {label}
+                        {key === "typowania" && hasTodayMatches && (
+                            <span className="absolute right-3 top-1/2 size-1.5 -translate-y-1/2 rounded-full bg-brand-solid animate-pulse" />
+                        )}
                     </a>
                 ))}
             </div>

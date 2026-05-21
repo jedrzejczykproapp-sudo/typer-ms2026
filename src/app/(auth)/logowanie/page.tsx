@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Globe06 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { Input } from "@/components/base/input/input";
 import { signIn } from "@/actions/auth-actions";
+import { Logo } from "@/components/app/logo";
 
 export default function LogowaniePage() {
     const [error, setError] = useState<string | null>(null);
@@ -23,11 +23,8 @@ export default function LogowaniePage() {
 
     return (
         <div className="flex flex-col items-center gap-8">
-            <div className="flex flex-col items-center gap-3 text-center">
-                <div className="flex size-14 items-center justify-center rounded-xl bg-brand-solid text-white shadow-lg">
-                    <Globe06 className="size-7" />
-                </div>
-                <h1 className="text-display-xs font-semibold text-primary">Typer MŚ 2026</h1>
+            <div className="flex flex-col items-center gap-4 text-center">
+                <Logo height={24} className="text-primary" />
                 <p className="text-sm text-tertiary">Zaloguj się do swojego konta</p>
             </div>
 

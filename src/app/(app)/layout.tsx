@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Trophy01 } from "@untitledui/icons";
 import { createClient } from "@/lib/supabase/server";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { AccountSettingsMenu } from "@/components/app/account-settings-menu";
+import { Logo } from "@/components/app/logo";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
     const supabase = await createClient();
@@ -28,9 +28,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             <header className="sticky top-0 z-30 border-b border-secondary bg-primary">
                 <div className="mx-auto flex h-14 max-w-2xl items-center justify-between px-4">
                     {/* Logo */}
-                    <Link href="/konto" className="flex items-center gap-2">
-                        <Trophy01 className="size-5 text-fg-brand-primary" />
-                        <span className="font-bold text-primary">Typer MŚ 2026</span>
+                    <Link href="/konto" className="flex items-center">
+                        <Logo height={17} className="text-primary" />
                     </Link>
 
                     {/* Avatar + name + settings */}

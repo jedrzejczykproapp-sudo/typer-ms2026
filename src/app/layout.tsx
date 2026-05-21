@@ -14,6 +14,12 @@ const inter = Inter({
 export const metadata: Metadata = {
     title: "Typer MŚ 2026",
     description: "Obstawiaj wyniki Mistrzostw Świata 2026 ze znajomymi",
+    icons: {
+        icon: [
+            { url: "/favicon-light.svg", type: "image/svg+xml", media: "(prefers-color-scheme: light)" },
+            { url: "/favicon-dark.svg",  type: "image/svg+xml", media: "(prefers-color-scheme: dark)" },
+        ],
+    },
 };
 
 export const viewport: Viewport = {
