@@ -115,12 +115,27 @@ export async function removeMember(groupId: string, memberId: string) {
 export async function getGroupMembers(groupId: string) {
     const supabase = await createClient();
 
-    const { data } = await supabase
+    const { data: members } = await supabase
         .from("group_members")
-        .select("user_id, joined_at, profiles(id, display_name, avatar_url)")
+        .select("user_id, joined_at")
         .eq("group_id", groupId);
 
-    return data ?? [];
+    if (!members?.length) return [];
+
+    const userIds = members.map((m) => m.user_id);
+
+    const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, display_name, avatar_url")
+        .in("id", userIds);
+
+    const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
+
+    return members.map((m) => ({
+        user_id: m.user_id,
+        joined_at: m.joined_at,
+        profiles: profileMap.get(m.user_id) ?? null,
+    }));
 }
 
 export async function getGroupWithMembers(groupId: string) {
