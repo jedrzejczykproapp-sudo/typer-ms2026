@@ -46,7 +46,7 @@ export function LeaderboardTable({ entries, currentUserId }: { entries: Leaderbo
                             {entry.rank}
                         </span>
 
-                        <Avatar initials={inits} size="sm" />
+                        <Avatar initials={inits} src={entry.avatar_url ?? undefined} size="sm" />
 
                         <p className="min-w-0 flex-1 truncate text-sm font-semibold text-primary">
                             {entry.display_name ?? "Anonim"}

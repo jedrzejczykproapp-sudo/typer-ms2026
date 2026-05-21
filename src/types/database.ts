@@ -55,6 +55,7 @@ export interface Prediction {
 export interface LeaderboardEntry {
     user_id: string;
     display_name: string | null;
+    avatar_url: string | null;
     total_points: number;
     exact_scores: number;
     correct_results: number;

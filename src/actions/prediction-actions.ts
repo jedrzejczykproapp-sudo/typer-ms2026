@@ -64,7 +64,7 @@ export async function getLeaderboard(groupId: string): Promise<LeaderboardEntry[
     const userIds = members.map((m) => m.user_id);
 
     const [{ data: profiles }, { data: predictions }] = await Promise.all([
-        supabase.from("profiles").select("id, display_name").in("id", userIds),
+        supabase.from("profiles").select("id, display_name, avatar_url").in("id", userIds),
         supabase.from("predictions").select("*").eq("group_id", groupId),
     ]);
 
@@ -81,6 +81,7 @@ export async function getLeaderboard(groupId: string): Promise<LeaderboardEntry[
         return {
             user_id: member.user_id,
             display_name: profile?.display_name ?? null,
+            avatar_url: profile?.avatar_url ?? null,
             total_points: totalPoints,
             exact_scores: exactScores,
             correct_results: correctResults,

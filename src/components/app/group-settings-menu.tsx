@@ -516,7 +516,7 @@ export function GroupSettingsMenu({
                                             // ── Normal member row ──
                                             return (
                                                 <div key={member.user_id} className="flex items-center gap-3 rounded-xl px-3 py-2.5">
-                                                    <Avatar initials={initials(name)} size="sm" />
+                                                    <Avatar initials={initials(name)} src={(member.profiles as any)?.avatar_url ?? undefined} size="sm" />
                                                     <div className="min-w-0 flex-1">
                                                         <p className="truncate text-sm font-medium text-primary">
                                                             {name}
