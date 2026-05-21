@@ -5,7 +5,6 @@ import { getWcOdds } from "@/lib/odds";
 import { getFlagUrl } from "@/lib/flags";
 import { PredictionCard } from "@/components/app/prediction-card";
 import { LeaderboardTable } from "@/components/app/leaderboard-table";
-import { BottomNav } from "@/components/app/bottom-nav";
 import { GroupSettingsMenu } from "@/components/app/group-settings-menu";
 import type { Match } from "@/types/database";
 
@@ -115,8 +114,6 @@ export default async function GroupPage({
                     <GrupyTab />
                 )}
             </div>
-
-            <BottomNav groupId={id} />
         </>
     );
 }
