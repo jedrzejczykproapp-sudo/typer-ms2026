@@ -12,7 +12,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-    title: "Typer MŚ 2026",
+    title: "typerek",
     description: "Obstawiaj wyniki Mistrzostw Świata 2026 ze znajomymi",
     icons: {
         icon: [
