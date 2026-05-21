@@ -149,12 +149,18 @@ export function PredictionCard({ match, groupId, prediction, odds }: PredictionC
                 <p className="py-2 text-center text-sm text-tertiary">Mecz do ustalenia po fazie grupowej</p>
             ) : (
                 <>
-                    {/* Score row */}
+                    {/* Score row — same 3-col structure as teams row so columns align */}
                     {isFinished ? (
-                        <div className="flex items-center justify-between px-2">
-                            <span className="text-4xl font-bold tabular-nums text-primary">{match.home_score}</span>
-                            <span className="text-2xl text-tertiary">:</span>
-                            <span className="text-4xl font-bold tabular-nums text-primary">{match.away_score}</span>
+                        <div className="flex items-center gap-3">
+                            <div className="flex flex-1 justify-center">
+                                <span className="text-4xl font-bold tabular-nums text-primary">{match.home_score}</span>
+                            </div>
+                            <div className="flex w-8 shrink-0 justify-center">
+                                <span className="text-2xl text-tertiary">:</span>
+                            </div>
+                            <div className="flex flex-1 justify-center">
+                                <span className="text-4xl font-bold tabular-nums text-primary">{match.away_score}</span>
+                            </div>
                         </div>
                     ) : isLocked ? (
                         <div className="flex items-center justify-center gap-1.5 py-1 text-tertiary">
@@ -162,14 +168,20 @@ export function PredictionCard({ match, groupId, prediction, odds }: PredictionC
                             <span className="text-sm">W trakcie</span>
                         </div>
                     ) : (
-                        <div className="flex items-center justify-between">
-                            <ScoreInput value={homeScore} onChange={setHomeScore} disabled={false} />
-                            <span className="text-2xl font-bold text-tertiary">:</span>
-                            <ScoreInput value={awayScore} onChange={setAwayScore} disabled={false} />
+                        <div className="flex items-center gap-3">
+                            <div className="flex flex-1 justify-center">
+                                <ScoreInput value={homeScore} onChange={setHomeScore} disabled={false} />
+                            </div>
+                            <div className="flex w-8 shrink-0 justify-center">
+                                <span className="text-2xl font-bold text-tertiary">:</span>
+                            </div>
+                            <div className="flex flex-1 justify-center">
+                                <ScoreInput value={awayScore} onChange={setAwayScore} disabled={false} />
+                            </div>
                         </div>
                     )}
 
-                    {/* Teams row */}
+                    {/* Teams row — same 3-col structure, flex-1 widths match score row exactly */}
                     <div className="flex items-center gap-3">
                         <div className="flex flex-1 items-center justify-center gap-2.5">
                             <TeamFlag teamName={match.home_team} />
@@ -177,7 +189,9 @@ export function PredictionCard({ match, groupId, prediction, odds }: PredictionC
                                 {match.home_team}
                             </span>
                         </div>
-                        <span className="shrink-0 text-xs font-medium text-tertiary">vs</span>
+                        <div className="flex w-8 shrink-0 justify-center">
+                            <span className="text-xs font-medium text-tertiary">vs</span>
+                        </div>
                         <div className="flex flex-1 items-center justify-center gap-2.5">
                             <TeamFlag teamName={match.away_team} />
                             <span className="text-sm font-semibold leading-tight text-primary">

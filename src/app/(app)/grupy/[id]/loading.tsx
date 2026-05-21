@@ -12,10 +12,16 @@ function PredictionCardSkeleton() {
             </div>
 
             {/* Score row */}
-            <div className="flex items-center justify-between">
-                <Skel className="h-11 w-[132px] rounded-xl" />
-                <Skel className="h-5 w-4" />
-                <Skel className="h-11 w-[132px] rounded-xl" />
+            <div className="flex items-center gap-3">
+                <div className="flex flex-1 justify-center">
+                    <Skel className="h-11 w-[132px] rounded-xl" />
+                </div>
+                <div className="flex w-8 shrink-0 justify-center">
+                    <Skel className="h-5 w-3" />
+                </div>
+                <div className="flex flex-1 justify-center">
+                    <Skel className="h-11 w-[132px] rounded-xl" />
+                </div>
             </div>
 
             {/* Teams row */}
@@ -24,7 +30,7 @@ function PredictionCardSkeleton() {
                     <Skel className="size-8 shrink-0 rounded-lg" />
                     <Skel className="h-4 w-20" />
                 </div>
-                <Skel className="h-3 w-4 shrink-0" />
+                <div className="w-8 shrink-0" />
                 <div className="flex flex-1 items-center justify-center gap-2.5">
                     <Skel className="size-8 shrink-0 rounded-lg" />
                     <Skel className="h-4 w-20" />
