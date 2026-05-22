@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getMatchesWithPredictions, getLeaderboard } from "@/actions/prediction-actions";
-import { getWcOdds } from "@/lib/odds";
+import { getOdds } from "@/lib/odds";
 import { getFlagUrl, getTeamNamePl } from "@/lib/flags";
 import { getClubCrestUrl } from "@/lib/clubs";
 import { PredictionCard } from "@/components/app/prediction-card";
@@ -120,10 +120,8 @@ export default async function GroupPage({
 }
 
 async function TypowaniaTab({ groupId, userId }: { groupId: string; userId: string }) {
-    const [{ matches, predictions, competitionType }, oddsMap] = await Promise.all([
-        getMatchesWithPredictions(groupId),
-        getWcOdds(),
-    ]);
+    const { matches, predictions, competitionType } = await getMatchesWithPredictions(groupId);
+    const oddsMap = await getOdds(competitionType);
 
     // Ekstraklasa: show last round (highest matchday) only
     let displayMatches = matches;

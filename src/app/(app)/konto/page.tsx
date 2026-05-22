@@ -4,7 +4,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { StatsDashboard, type UserStats } from "@/components/app/stats-dashboard";
 import { getMatchesWithPredictions } from "@/actions/prediction-actions";
-import { getWcOdds } from "@/lib/odds";
+import { getOdds } from "@/lib/odds";
 import { PredictionCard } from "@/components/app/prediction-card";
 import { CreateGroupModal } from "@/components/app/group-modals";
 import { JoinGroupModal } from "@/components/app/group-modals";
@@ -128,11 +128,9 @@ async function TypowaniaTab({
         return <EmptyState icon={Users01 as Parameters<typeof FeaturedIcon>[0]["icon"]} title="Brak grup" description="Utwórz grupę lub dołącz do istniejącej, aby zacząć typować." />;
     }
 
-    const [{ matches, predictions, competitionType: ct }, oddsMap] = await Promise.all([
-        getMatchesWithPredictions(activeGroup.id),
-        getWcOdds(),
-    ]);
+    const { matches, predictions, competitionType: ct } = await getMatchesWithPredictions(activeGroup.id);
     const resolvedCompetitionType = ct ?? competitionType;
+    const oddsMap = await getOdds(resolvedCompetitionType ?? "wc_2026");
     const isEkstraklasa = resolvedCompetitionType === "ekstraklasa_2526";
 
     // Ekstraklasa: show last round (highest matchday). WC: show today's matches.
