@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/base/buttons/button";
 import { Input } from "@/components/base/input/input";
 import { signUp } from "@/actions/auth-actions";
 import { Logo } from "@/components/app/logo";
 
-export default function RejestracjaPage() {
+function RejestracjaForm() {
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const searchParams = useSearchParams();
@@ -101,5 +101,13 @@ export default function RejestracjaPage() {
                 </Button>
             </p>
         </div>
+    );
+}
+
+export default function RejestracjaPage() {
+    return (
+        <Suspense>
+            <RejestracjaForm />
+        </Suspense>
     );
 }

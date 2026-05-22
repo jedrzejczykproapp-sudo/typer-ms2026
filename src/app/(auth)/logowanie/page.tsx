@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/base/buttons/button";
 import { Input } from "@/components/base/input/input";
 import { signIn } from "@/actions/auth-actions";
 import { Logo } from "@/components/app/logo";
 
-export default function LogowaniePage() {
+function LogowanieForm() {
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const searchParams = useSearchParams();
@@ -75,5 +75,13 @@ export default function LogowaniePage() {
                 </Button>
             </p>
         </div>
+    );
+}
+
+export default function LogowaniePage() {
+    return (
+        <Suspense>
+            <LogowanieForm />
+        </Suspense>
     );
 }
