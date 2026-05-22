@@ -330,26 +330,18 @@ export function GroupSettingsMenu({
         setIsDeleting(true);
         setActionError(null);
         const result = await deleteGroup(groupId);
+        // On success the server action redirects — we only land here on error
         setIsDeleting(false);
-        if (result?.error) {
-            setActionError(result.error);
-        } else {
-            router.push("/konto?tab=grupy");
-            router.refresh();
-        }
+        if (result?.error) setActionError(result.error);
     }
 
     async function handleLeaveGroup() {
         setIsLeaving(true);
         setActionError(null);
         const result = await leaveGroup(groupId);
+        // On success the server action redirects — we only land here on error
         setIsLeaving(false);
-        if (result?.error) {
-            setActionError(result.error);
-        } else {
-            router.push("/konto?tab=grupy");
-            router.refresh();
-        }
+        if (result?.error) setActionError(result.error);
     }
 
     const sheetTitles: Record<Sheet, string> = {

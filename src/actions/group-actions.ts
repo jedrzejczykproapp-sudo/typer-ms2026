@@ -173,8 +173,8 @@ export async function deleteGroup(groupId: string) {
     const { data: group } = await supabase.from("groups").select("created_by").eq("id", groupId).single();
     if (!group || group.created_by !== user.id) return { error: "Brak uprawnień" };
 
-    // Delete child rows first to avoid FK constraint violations
-    await supabase.from("predictions").delete().eq("group_id", groupId);
+    // Delete child rows first (RLS: user can delete own predictions; DB CASCADE handles the rest)
+    await supabase.from("predictions").delete().eq("group_id", groupId).eq("user_id", user.id);
     await supabase.from("group_members").delete().eq("group_id", groupId);
 
     const { error } = await supabase.from("groups").delete().eq("id", groupId);
@@ -182,7 +182,7 @@ export async function deleteGroup(groupId: string) {
 
     revalidatePath("/grupy");
     revalidatePath("/konto");
-    return { success: true };
+    redirect("/konto?tab=grupy");
 }
 
 export async function leaveGroup(groupId: string) {
@@ -201,7 +201,7 @@ export async function leaveGroup(groupId: string) {
 
     revalidatePath("/grupy");
     revalidatePath("/konto");
-    return { success: true };
+    redirect("/konto?tab=grupy");
 }
 
 export async function getGroupWithMembers(groupId: string) {
