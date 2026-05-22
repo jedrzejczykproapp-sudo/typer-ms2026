@@ -378,20 +378,20 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
 
                     {/* Teams row */}
                     <div className="flex items-center gap-3">
-                        {/* Home — name right-aligned, flag inner (close to score) */}
-                        <div className="flex flex-1 items-center justify-end gap-2.5">
-                            <span className="truncate text-right text-sm font-semibold leading-tight text-primary">
+                        {/* Home — name right-aligned, flag inner */}
+                        <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+                            <span className="min-w-0 truncate text-right text-sm font-semibold leading-tight text-primary">
                                 {getTeamNamePl(match.home_team)}
                             </span>
                             <TeamFlag teamName={match.home_team} competitionType={competitionType} />
                         </div>
-                        <div className="flex w-8 shrink-0 justify-center">
+                        <div className="flex w-6 shrink-0 justify-center">
                             <span className="text-xs font-medium text-tertiary">vs</span>
                         </div>
-                        {/* Away — flag inner (close to score), name left-aligned */}
-                        <div className="flex flex-1 items-center justify-start gap-2.5">
+                        {/* Away — flag inner, name left-aligned */}
+                        <div className="flex min-w-0 flex-1 items-center justify-start gap-2">
                             <TeamFlag teamName={match.away_team} competitionType={competitionType} />
-                            <span className="truncate text-sm font-semibold leading-tight text-primary">
+                            <span className="min-w-0 truncate text-sm font-semibold leading-tight text-primary">
                                 {getTeamNamePl(match.away_team)}
                             </span>
                         </div>
