@@ -415,7 +415,7 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                     </div>
 
                     {/* Wiersz 2: herb/flaga + nazwa — wyśrodkowane pod wynikiem */}
-                    <div className="flex items-start gap-2">
+                    <div className="flex items-center gap-2">
                         <div className="flex flex-1 flex-col items-center gap-2">
                             <TeamFlag teamName={match.home_team} competitionType={competitionType} />
                             <span className="line-clamp-2 w-full text-center text-sm font-semibold leading-tight text-primary">
@@ -424,8 +424,8 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                                     : getTeamNamePl(match.home_team)}
                             </span>
                         </div>
-                        <div className="flex shrink-0 items-center justify-center pt-3">
-                            <span className="text-[10px] font-medium text-quaternary">vs</span>
+                        <div className="flex shrink-0 items-center justify-center">
+                            <span className="text-xs font-medium text-quaternary">vs</span>
                         </div>
                         <div className="flex flex-1 flex-col items-center gap-2">
                             <TeamFlag teamName={match.away_team} competitionType={competitionType} />
@@ -478,7 +478,7 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
 
             {/* Odds row — upcoming only */}
             {odds && !isTbd && !isLocked && (
-                <div className="flex gap-2 border-t border-secondary pt-3">
+                <div className="flex gap-2">
                     {[
                         { label: "1", value: odds.home },
                         { label: "X", value: odds.draw },
@@ -498,7 +498,7 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                     /* "Zapisane" — no border, no interaction */
                     <div className="flex h-9 w-full items-center justify-center gap-1.5 text-sm font-medium text-tertiary">
                         <Check className="size-4 shrink-0" />
-                        Zapisane
+                        Typ zapisany
                     </div>
                 ) : (
                     <Button
