@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { CalendarCheck01, ChevronRight, Users01 } from "@untitledui/icons";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { Avatar } from "@/components/base/avatar/avatar";
+import { AccountSettingsMenu } from "@/components/app/account-settings-menu";
 import { StatsDashboard, type UserStats } from "@/components/app/stats-dashboard";
 import { getAllGroupsMatchesWithPredictions } from "@/actions/prediction-actions";
 import { getOdds } from "@/lib/odds";
@@ -51,12 +53,18 @@ export default async function KontoPage({
     } = await supabase.auth.getUser();
     if (!user) redirect("/logowanie");
 
-    // Fetch user's groups
-    const { data: memberships } = await supabase
-        .from("group_members")
-        .select("group_id, groups(id, name, invite_code, created_at, avatar_url, competition_type)")
-        .eq("user_id", user.id)
-        .order("joined_at", { ascending: false });
+    // Fetch profile + groups in parallel
+    const [{ data: profile }, { data: memberships }] = await Promise.all([
+        supabase.from("profiles").select("display_name, avatar_url").eq("id", user.id).single(),
+        supabase
+            .from("group_members")
+            .select("group_id, groups(id, name, invite_code, created_at, avatar_url, competition_type)")
+            .eq("user_id", user.id)
+            .order("joined_at", { ascending: false }),
+    ]);
+
+    const displayName = profile?.display_name ?? "?";
+    const profileInits = displayName.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
 
     const groups = (memberships?.map((m) => m.groups).filter(Boolean) ?? []) as unknown as {
         id: string;
@@ -82,7 +90,22 @@ export default async function KontoPage({
     const hasTodayMatches = (todayMatchCount ?? 0) > 0;
 
     return (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-4">
+            {/* Profile header */}
+            <div className="flex items-center gap-3 px-1">
+                <Avatar initials={profileInits} src={profile?.avatar_url ?? null} size="md" />
+                <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold text-primary">{displayName}</p>
+                    <p className="truncate text-xs text-tertiary">{user.email}</p>
+                </div>
+                <AccountSettingsMenu
+                    displayName={displayName}
+                    avatarUrl={profile?.avatar_url ?? null}
+                    email={user.email ?? ""}
+                    userId={user.id}
+                />
+            </div>
+
             {/* Tabs */}
             <div className="flex gap-1 rounded-xl bg-secondary p-1">
                 {TABS.map(({ key, label }) => (

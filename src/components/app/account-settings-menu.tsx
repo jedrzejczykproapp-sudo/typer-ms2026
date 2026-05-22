@@ -121,7 +121,7 @@ const AvatarCropPicker = forwardRef<AvatarCropHandle, { currentUrl: string | nul
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Sheet = "profile" | "options" | "edit" | "confirmDelete";
+type Sheet = "options" | "edit" | "confirmDelete";
 
 interface AccountSettingsMenuProps {
     displayName: string;
@@ -145,13 +145,11 @@ export function AccountSettingsMenu({ displayName, avatarUrl, email, userId }: A
 
     const inits = displayName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
-    function open() { setSheet("profile"); setIsOpen(true); }
+    function open() { setSheet("options"); setIsOpen(true); }
     function close() { setIsOpen(false); }
-    function openOptions() { setSheet("options"); }
     function openEdit() { setSaveError(null); setSheet("edit"); }
 
     const backTarget: Partial<Record<Sheet, Sheet>> = {
-        options: "profile",
         edit: "options",
         confirmDelete: "options",
     };
@@ -190,24 +188,20 @@ export function AccountSettingsMenu({ displayName, avatarUrl, email, userId }: A
     }
 
     const sheetTitles: Record<Sheet, string> = {
-        profile: "Moje konto",
-        options: "Opcje",
+        options: "Moje konto",
         edit: "Edytuj profil",
         confirmDelete: "Usuń konto",
     };
 
     return (
         <>
-            {/* Trigger: avatar + name */}
+            {/* Trigger: three-dots menu button */}
             <button
                 type="button"
                 onClick={open}
-                className="flex items-center gap-2 rounded-lg px-2 py-1 transition hover:bg-secondary"
+                className="rounded-lg p-1.5 text-fg-quaternary transition hover:bg-secondary hover:text-fg-tertiary"
             >
-                <Avatar initials={inits} src={avatarUrl} size="xs" />
-                <span className="max-w-[120px] truncate text-sm font-medium text-primary">
-                    {displayName}
-                </span>
+                <DotsVertical className="size-5" />
             </button>
 
             {isOpen && (
@@ -232,22 +226,6 @@ export function AccountSettingsMenu({ displayName, avatarUrl, email, userId }: A
 
                         {/* Content */}
                         <div className="max-h-[70dvh] overflow-y-auto px-4 py-4 pb-8">
-                            {sheet === "profile" && (
-                                <div className="flex items-center gap-3 rounded-xl px-3 py-3">
-                                    <Avatar initials={inits} src={avatarUrl} size="md" />
-                                    <div className="min-w-0 flex-1">
-                                        <p className="truncate font-semibold text-primary">{displayName}</p>
-                                        <p className="truncate text-xs text-tertiary">{email}</p>
-                                    </div>
-                                    <button
-                                        onClick={openOptions}
-                                        className="rounded-lg p-1.5 text-fg-quaternary transition hover:bg-secondary hover:text-fg-tertiary"
-                                    >
-                                        <DotsVertical className="size-5" />
-                                    </button>
-                                </div>
-                            )}
-
                             {sheet === "options" && (
                                 <div className="flex flex-col">
                                     {/* Edit profile */}
