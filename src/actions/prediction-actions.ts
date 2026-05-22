@@ -36,7 +36,20 @@ export async function getMatchesWithPredictions(groupId: string) {
         data: { user },
     } = await supabase.auth.getUser();
 
-    const { data: matches } = await supabase.from("matches").select("*").order("match_date", { ascending: true });
+    // Resolve which competition this group tracks
+    const { data: group } = await supabase
+        .from("groups")
+        .select("competition_type")
+        .eq("id", groupId)
+        .single();
+
+    const competitionType = (group as { competition_type?: string } | null)?.competition_type ?? "wc_2026";
+
+    const { data: matches } = await supabase
+        .from("matches")
+        .select("*")
+        .eq("competition_type", competitionType)
+        .order("match_date", { ascending: true });
 
     const { data: predictions } = user
         ? await supabase.from("predictions").select("*").eq("group_id", groupId).eq("user_id", user.id)
@@ -48,6 +61,7 @@ export async function getMatchesWithPredictions(groupId: string) {
         matches: (matches ?? []) as Match[],
         predictions: predictionMap as Map<string, Prediction>,
         userId: user?.id ?? null,
+        competitionType,
     };
 }
 

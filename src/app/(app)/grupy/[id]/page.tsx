@@ -119,7 +119,7 @@ export default async function GroupPage({
 }
 
 async function TypowaniaTab({ groupId, userId }: { groupId: string; userId: string }) {
-    const [{ matches, predictions }, oddsMap] = await Promise.all([
+    const [{ matches, predictions, competitionType }, oddsMap] = await Promise.all([
         getMatchesWithPredictions(groupId),
         getWcOdds(),
     ]);
@@ -157,6 +157,7 @@ async function TypowaniaTab({ groupId, userId }: { groupId: string; userId: stri
                                     groupId={groupId}
                                     prediction={predictions.get(match.id)}
                                     odds={oddsMap.get(`${match.home_team}|${match.away_team}`)}
+                                    competitionType={competitionType}
                                 />
                             ))}
                         </div>

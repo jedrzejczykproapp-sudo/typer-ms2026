@@ -128,10 +128,11 @@ async function TypowaniaTab({
         return <EmptyState icon={Users01 as Parameters<typeof FeaturedIcon>[0]["icon"]} title="Brak grup" description="Utwórz grupę lub dołącz do istniejącej, aby zacząć typować." />;
     }
 
-    const [{ matches, predictions }, oddsMap] = await Promise.all([
+    const [{ matches, predictions, competitionType: ct }, oddsMap] = await Promise.all([
         getMatchesWithPredictions(activeGroup.id),
         getWcOdds(),
     ]);
+    const resolvedCompetitionType = ct ?? competitionType;
 
     // Filter to today only
     const todayUtc = new Date().toISOString().slice(0, 10);
@@ -206,7 +207,7 @@ async function TypowaniaTab({
                                         groupId={activeGroup.id}
                                         prediction={predictions.get(match.id)}
                                         odds={oddsMap.get(`${match.home_team}|${match.away_team}`)}
-                                        competitionType={competitionType}
+                                        competitionType={resolvedCompetitionType}
                                     />
                                 ))}
                             </div>
