@@ -147,6 +147,7 @@ export async function getAllGroupsMatchesWithPredictions(
         .select("*")
         .in("competition_type", competitionTypes)
         .gte("match_date", todayStart.toISOString())
+        .neq("status", "finished")
         .order("match_date", { ascending: true })
         .order("home_team", { ascending: true });
 
