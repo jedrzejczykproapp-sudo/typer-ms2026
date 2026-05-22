@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getMatchesWithPredictions, getLeaderboard } from "@/actions/prediction-actions";
 import { getWcOdds } from "@/lib/odds";
 import { getFlagUrl, getTeamNamePl } from "@/lib/flags";
+import { getClubCrestUrl } from "@/lib/clubs";
 import { PredictionCard } from "@/components/app/prediction-card";
 import { LeaderboardTable } from "@/components/app/leaderboard-table";
 import { GroupSettingsMenu } from "@/components/app/group-settings-menu";
@@ -111,7 +112,7 @@ export default async function GroupPage({
                 ) : tab === "tabela" ? (
                     <TabelaTab groupId={id} userId={user!.id} />
                 ) : (
-                    <GrupyTab />
+                    <GrupyTab competitionType={group.competition_type ?? "wc_2026"} />
                 )}
             </div>
         </>
@@ -192,75 +193,142 @@ type TeamStats = {
     points: number;
 };
 
-async function GrupyTab() {
+function applyResult(
+    stats: Record<string, TeamStats>,
+    homeTeam: string,
+    awayTeam: string,
+    hg: number,
+    ag: number,
+) {
+    stats[homeTeam].played++;
+    stats[homeTeam].gf += hg;
+    stats[homeTeam].ga += ag;
+    stats[awayTeam].played++;
+    stats[awayTeam].gf += ag;
+    stats[awayTeam].ga += hg;
+    if (hg > ag) {
+        stats[homeTeam].won++;
+        stats[homeTeam].points += 3;
+        stats[awayTeam].lost++;
+    } else if (hg < ag) {
+        stats[awayTeam].won++;
+        stats[awayTeam].points += 3;
+        stats[homeTeam].lost++;
+    } else {
+        stats[homeTeam].drawn++;
+        stats[homeTeam].points += 1;
+        stats[awayTeam].drawn++;
+        stats[awayTeam].points += 1;
+    }
+}
+
+function sortStandings(teams: TeamStats[]) {
+    return [...teams].sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points;
+        const gdA = a.gf - a.ga;
+        const gdB = b.gf - b.ga;
+        if (gdB !== gdA) return gdB - gdA;
+        if (b.gf !== a.gf) return b.gf - a.gf;
+        return a.team.localeCompare(b.team);
+    });
+}
+
+async function GrupyTab({ competitionType = "wc_2026" }: { competitionType?: string }) {
     const supabase = await createClient();
+    const isEkstraklasa = competitionType === "ekstraklasa_2526";
 
     const { data: matches } = await supabase
         .from("matches")
         .select("home_team, away_team, home_score, away_score, status, group_name")
         .eq("stage", "group")
+        .eq("competition_type", competitionType)
         .order("group_name", { ascending: true });
 
     if (!matches?.length) return <p className="text-sm text-tertiary">Brak danych.</p>;
 
-    // Build standings from finished matches
-    const groups: Record<string, Record<string, TeamStats>> = {};
+    // ── Ekstraklasa: single full league table ─────────────────────────────────
+    if (isEkstraklasa) {
+        const standings: Record<string, TeamStats> = {};
 
-    for (const match of matches) {
-        const g = match.group_name as string;
-        if (!groups[g]) groups[g] = {};
+        for (const m of matches) {
+            if (!standings[m.home_team]) standings[m.home_team] = { team: m.home_team, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, points: 0 };
+            if (!standings[m.away_team]) standings[m.away_team] = { team: m.away_team, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, points: 0 };
 
-        const ensure = (team: string) => {
-            if (!groups[g][team]) {
-                groups[g][team] = { team, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, points: 0 };
+            if (m.status === "finished" && m.home_score !== null && m.away_score !== null) {
+                applyResult(standings, m.home_team, m.away_team, m.home_score as number, m.away_score as number);
             }
-        };
+        }
 
-        ensure(match.home_team);
-        ensure(match.away_team);
+        const teams = sortStandings(Object.values(standings));
 
-        if (match.status === "finished" && match.home_score !== null && match.away_score !== null) {
-            const hg = match.home_score as number;
-            const ag = match.away_score as number;
+        return (
+            <div className="overflow-hidden rounded-xl border border-secondary bg-primary shadow-xs">
+                <div className="border-b border-secondary px-4 py-2.5">
+                    <h3 className="text-sm font-bold text-primary">Ekstraklasa PKO BP 2025/26</h3>
+                </div>
 
-            groups[g][match.home_team].played++;
-            groups[g][match.home_team].gf += hg;
-            groups[g][match.home_team].ga += ag;
+                {/* Column headers */}
+                <div className="grid grid-cols-[20px_1fr_28px_28px_28px_32px] items-center border-b border-secondary px-3 py-1.5">
+                    <span className="text-center text-xs text-quaternary">#</span>
+                    <span className="pl-7 text-xs text-quaternary">Drużyna</span>
+                    <span className="text-center text-xs text-quaternary">M</span>
+                    <span className="text-center text-xs text-quaternary">G</span>
+                    <span className="text-center text-xs text-quaternary">S</span>
+                    <span className="text-center text-xs font-semibold text-quaternary">Pkt</span>
+                </div>
 
-            groups[g][match.away_team].played++;
-            groups[g][match.away_team].gf += ag;
-            groups[g][match.away_team].ga += hg;
+                {/* Team rows */}
+                {teams.map((team, idx) => {
+                    const crestUrl = getClubCrestUrl(team.team);
+                    return (
+                        <div
+                            key={team.team}
+                            className={`grid grid-cols-[20px_1fr_28px_28px_28px_32px] items-center px-3 py-2 ${
+                                idx < teams.length - 1 ? "border-b border-secondary" : ""
+                            }`}
+                        >
+                            <span className="text-center text-xs tabular-nums text-tertiary">{idx + 1}</span>
+                            <div className="flex min-w-0 items-center gap-2">
+                                {crestUrl ? (
+                                    <img src={crestUrl} alt={team.team} className="size-5 shrink-0 rounded object-contain" />
+                                ) : (
+                                    <div className="flex size-5 shrink-0 items-center justify-center rounded bg-secondary text-[10px] font-bold text-tertiary">
+                                        {team.team.charAt(0)}
+                                    </div>
+                                )}
+                                <span className="truncate text-sm text-primary">{team.team}</span>
+                            </div>
+                            <span className="text-center text-sm tabular-nums text-primary">{team.played}</span>
+                            <span className="text-center text-sm tabular-nums text-primary">{team.gf}</span>
+                            <span className="text-center text-sm tabular-nums text-primary">{team.ga}</span>
+                            <span className="text-center text-sm font-bold tabular-nums text-primary">{team.points}</span>
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    }
 
-            if (hg > ag) {
-                groups[g][match.home_team].won++;
-                groups[g][match.home_team].points += 3;
-                groups[g][match.away_team].lost++;
-            } else if (hg < ag) {
-                groups[g][match.away_team].won++;
-                groups[g][match.away_team].points += 3;
-                groups[g][match.home_team].lost++;
-            } else {
-                groups[g][match.home_team].drawn++;
-                groups[g][match.home_team].points += 1;
-                groups[g][match.away_team].drawn++;
-                groups[g][match.away_team].points += 1;
-            }
+    // ── WC: group-by-group display ────────────────────────────────────────────
+    const wcGroups: Record<string, Record<string, TeamStats>> = {};
+
+    for (const m of matches) {
+        const g = m.group_name as string;
+        if (!wcGroups[g]) wcGroups[g] = {};
+        if (!wcGroups[g][m.home_team]) wcGroups[g][m.home_team] = { team: m.home_team, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, points: 0 };
+        if (!wcGroups[g][m.away_team]) wcGroups[g][m.away_team] = { team: m.away_team, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, points: 0 };
+
+        if (m.status === "finished" && m.home_score !== null && m.away_score !== null) {
+            applyResult(wcGroups[g], m.home_team, m.away_team, m.home_score as number, m.away_score as number);
         }
     }
 
-    const sortedGroupNames = Object.keys(groups).sort();
+    const sortedGroupNames = Object.keys(wcGroups).sort();
 
     return (
         <div className="flex flex-col gap-3">
             {sortedGroupNames.map((groupName) => {
-                const teams = Object.values(groups[groupName]).sort((a, b) => {
-                    if (b.points !== a.points) return b.points - a.points;
-                    const gdA = a.gf - a.ga;
-                    const gdB = b.gf - b.ga;
-                    if (gdB !== gdA) return gdB - gdA;
-                    if (b.gf !== a.gf) return b.gf - a.gf;
-                    return a.team.localeCompare(b.team);
-                });
+                const teams = sortStandings(Object.values(wcGroups[groupName]));
 
                 return (
                     <div key={groupName} className="overflow-hidden rounded-xl border border-secondary bg-primary shadow-xs">
@@ -290,11 +358,7 @@ async function GrupyTab() {
                                 >
                                     <div className="flex min-w-0 items-center gap-2">
                                         {flagUrl ? (
-                                            <img
-                                                src={flagUrl}
-                                                alt={team.team}
-                                                className="size-5 shrink-0 rounded"
-                                            />
+                                            <img src={flagUrl} alt={team.team} className="size-5 shrink-0 rounded" />
                                         ) : (
                                             <div className="size-5 shrink-0 rounded bg-secondary" />
                                         )}

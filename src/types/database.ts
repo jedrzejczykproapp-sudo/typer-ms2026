@@ -14,6 +14,8 @@ export interface Group {
     invite_code: string;
     created_by: string;
     created_at: string;
+    avatar_url: string | null;
+    competition_type: string;
 }
 
 export interface GroupMember {

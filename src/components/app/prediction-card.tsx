@@ -378,6 +378,7 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
 
                     {/* Teams row */}
                     <div className="flex items-center gap-3">
+                        {/* Home — flag on outer left */}
                         <div className="flex flex-1 items-center justify-center gap-2.5">
                             <TeamFlag teamName={match.home_team} competitionType={competitionType} />
                             <span className="text-sm font-semibold leading-tight text-primary">
@@ -387,11 +388,12 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                         <div className="flex w-8 shrink-0 justify-center">
                             <span className="text-xs font-medium text-tertiary">vs</span>
                         </div>
+                        {/* Away — flag on outer right */}
                         <div className="flex flex-1 items-center justify-center gap-2.5">
-                            <TeamFlag teamName={match.away_team} competitionType={competitionType} />
                             <span className="text-sm font-semibold leading-tight text-primary">
                                 {getTeamNamePl(match.away_team)}
                             </span>
+                            <TeamFlag teamName={match.away_team} competitionType={competitionType} />
                         </div>
                     </div>
 
