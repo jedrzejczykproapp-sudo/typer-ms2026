@@ -234,55 +234,70 @@ async function GrupyTab({ competitionType = "wc_2026" }: { competitionType?: str
                     <span className="text-xs text-tertiary">po {STANDINGS_ROUND}. kolejce</span>
                 </div>
 
-                {/* Column headers */}
-                <div className="grid grid-cols-[20px_1fr_28px_28px_28px_32px] items-center border-b border-secondary px-3 py-1.5">
-                    <span className="text-center text-xs text-quaternary">#</span>
-                    <span className="pl-7 text-xs text-quaternary">Drużyna</span>
-                    <span className="text-center text-xs text-quaternary">M</span>
-                    <span className="text-center text-xs text-quaternary">G</span>
-                    <span className="text-center text-xs text-quaternary">S</span>
-                    <span className="text-center text-xs font-semibold text-quaternary">Pkt</span>
+                {/* Nagłówki kolumn */}
+                <div className="grid grid-cols-[28px_1fr_28px_40px_24px_24px_24px_52px] items-center border-b border-secondary px-3 py-1.5">
+                    <span />
+                    <span className="text-xs font-medium uppercase tracking-wide text-quaternary">Drużyna</span>
+                    <span className="text-center text-xs font-medium uppercase tracking-wide text-quaternary">M</span>
+                    <span className="text-center text-xs font-medium uppercase tracking-wide text-quaternary">Pkt</span>
+                    <span className="text-center text-xs font-medium uppercase tracking-wide text-quaternary">Z</span>
+                    <span className="text-center text-xs font-medium uppercase tracking-wide text-quaternary">R</span>
+                    <span className="text-center text-xs font-medium uppercase tracking-wide text-quaternary">P</span>
+                    <span className="text-center text-xs font-medium uppercase tracking-wide text-quaternary">B</span>
                 </div>
 
-                {/* Team rows */}
+                {/* Wiersze drużyn */}
                 {EKSTRAKLASA_STANDINGS.map((team, idx) => {
                     const crestUrl = getClubCrestUrl(team.team);
-                    const displayName = getClubDisplayName(team.team);
                     return (
                         <div
                             key={team.team}
-                            className={`grid grid-cols-[20px_1fr_28px_28px_28px_32px] items-center px-3 py-2 ${
+                            className={`grid grid-cols-[28px_1fr_28px_40px_24px_24px_24px_52px] items-center px-3 py-2 ${
                                 idx < EKSTRAKLASA_STANDINGS.length - 1 ? "border-b border-secondary" : ""
                             }`}
                         >
+                            {/* Pozycja */}
                             <span className="text-center text-xs tabular-nums text-tertiary">{idx + 1}</span>
+
+                            {/* Herb + skrót */}
                             <div className="flex min-w-0 items-center gap-2">
                                 {crestUrl ? (
-                                    <img src={crestUrl} alt={displayName} className="size-5 shrink-0 rounded object-contain" />
+                                    <img src={crestUrl} alt={team.abbr} className="size-6 shrink-0 rounded object-contain" />
                                 ) : (
-                                    <div className="flex size-5 shrink-0 items-center justify-center rounded bg-secondary text-[10px] font-bold text-tertiary">
+                                    <div className="flex size-6 shrink-0 items-center justify-center rounded bg-secondary text-[10px] font-bold text-tertiary">
                                         {team.team.charAt(0)}
                                     </div>
                                 )}
-                                <span className="truncate text-sm text-primary">{displayName}</span>
+                                <span className="text-sm font-semibold text-primary">{team.abbr}</span>
                             </div>
-                            <span className="text-center text-sm tabular-nums text-primary">{team.played}</span>
-                            <span className="text-center text-sm tabular-nums text-primary">{team.gf}</span>
-                            <span className="text-center text-sm tabular-nums text-primary">{team.ga}</span>
+
+                            {/* M */}
+                            <span className="text-center text-sm tabular-nums text-secondary">{team.played}</span>
+
+                            {/* PKT */}
                             <div className="flex items-center justify-center gap-0.5">
                                 <span className="text-sm font-bold tabular-nums text-primary">{team.pts}</span>
-                                {team.note && <span className="text-[10px] font-medium text-error-primary">*</span>}
+                                {team.note && <span className="text-[9px] font-bold leading-none text-error-primary">*</span>}
                             </div>
+
+                            {/* Z */}
+                            <span className="text-center text-sm tabular-nums text-secondary">{team.won}</span>
+                            {/* R */}
+                            <span className="text-center text-sm tabular-nums text-secondary">{team.drawn}</span>
+                            {/* P */}
+                            <span className="text-center text-sm tabular-nums text-secondary">{team.lost}</span>
+                            {/* B */}
+                            <span className="text-center text-xs tabular-nums text-secondary">{team.gf}:{team.ga}</span>
                         </div>
                     );
                 })}
 
-                {/* Footnotes for teams with point adjustments */}
+                {/* Przypis dla drużyn z odjętymi punktami */}
                 {EKSTRAKLASA_STANDINGS.some((t) => t.note) && (
                     <div className="border-t border-secondary px-3 py-2">
                         {EKSTRAKLASA_STANDINGS.filter((t) => t.note).map((t) => (
                             <p key={t.team} className="text-xs text-tertiary">
-                                * {getClubDisplayName(t.team)}: {t.note}
+                                * {t.abbr}: {t.note}
                             </p>
                         ))}
                     </div>
