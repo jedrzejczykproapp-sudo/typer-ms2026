@@ -49,7 +49,8 @@ export async function getMatchesWithPredictions(groupId: string) {
         .from("matches")
         .select("*")
         .eq("competition_type", competitionType)
-        .order("match_date", { ascending: true });
+        .order("match_date", { ascending: true })
+        .order("home_team", { ascending: true });
 
     const { data: predictions } = user
         ? await supabase.from("predictions").select("*").eq("group_id", groupId).eq("user_id", user.id)
