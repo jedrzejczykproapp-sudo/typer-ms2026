@@ -7,6 +7,7 @@ import { getClubCrestUrl } from "@/lib/clubs";
 import { PredictionCard } from "@/components/app/prediction-card";
 import { LeaderboardTable } from "@/components/app/leaderboard-table";
 import { GroupSettingsMenu } from "@/components/app/group-settings-menu";
+import { GroupSwitcherDrawer } from "@/components/app/group-switcher-drawer";
 import type { Match } from "@/types/database";
 
 const stageOrder = ["group", "round_of_32", "round_of_16", "quarter", "semi", "third_place", "final"] as const;
@@ -51,35 +52,38 @@ export default async function GroupPage({
         data: { user },
     } = await supabase.auth.getUser();
 
-    const [{ data: group }, { count: memberCount }, memberCheck] = await Promise.all([
+    const [{ data: group }, { count: memberCount }, memberCheck, { data: memberships }] = await Promise.all([
         supabase.from("groups").select("*").eq("id", id).single(),
         supabase.from("group_members").select("id", { count: "exact", head: true }).eq("group_id", id),
         supabase.from("group_members").select("id").eq("group_id", id).eq("user_id", user!.id).single(),
+        supabase
+            .from("group_members")
+            .select("group_id, groups(id, name, avatar_url)")
+            .eq("user_id", user!.id)
+            .order("joined_at", { ascending: false }),
     ]);
 
     if (!group) notFound();
     if (!memberCheck.data) notFound();
+
+    const userGroups = (memberships?.map((m) => m.groups).filter(Boolean) ?? []) as unknown as {
+        id: string;
+        name: string;
+        avatar_url: string | null;
+    }[];
 
     return (
         <>
             <div className="flex flex-col gap-3">
                 {/* Group header */}
                 <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                        <div className="size-12 shrink-0 overflow-hidden rounded-xl bg-secondary">
-                            {group.avatar_url ? (
-                                <img src={group.avatar_url} alt={group.name} className="size-full object-cover" />
-                            ) : (
-                                <div className="flex size-full items-center justify-center text-xl font-bold text-tertiary">
-                                    {group.name.charAt(0).toUpperCase()}
-                                </div>
-                            )}
-                        </div>
-                        <div>
-                            <h1 className="text-xl font-bold text-primary">{group.name}</h1>
-                            <p className="mt-0.5 text-xs text-tertiary">{memberCount ?? 0} uczestników</p>
-                        </div>
-                    </div>
+                    <GroupSwitcherDrawer
+                        currentGroupId={id}
+                        currentGroupName={group.name}
+                        currentGroupAvatar={group.avatar_url ?? null}
+                        memberCount={memberCount ?? 0}
+                        groups={userGroups}
+                    />
                     <GroupSettingsMenu
                         groupId={id}
                         inviteCode={group.invite_code}

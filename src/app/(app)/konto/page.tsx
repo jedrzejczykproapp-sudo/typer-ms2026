@@ -3,7 +3,7 @@ import { CalendarCheck01, ChevronRight, Users01 } from "@untitledui/icons";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { StatsDashboard, type UserStats } from "@/components/app/stats-dashboard";
-import { getMatchesWithPredictions } from "@/actions/prediction-actions";
+import { getAllGroupsMatchesWithPredictions } from "@/actions/prediction-actions";
 import { getOdds } from "@/lib/odds";
 import { PredictionCard } from "@/components/app/prediction-card";
 import { CreateGroupModal } from "@/components/app/group-modals";
@@ -104,7 +104,7 @@ export default async function KontoPage({
             {tab === "statystyki" ? (
                 <StatystykiTab userId={user.id} groups={groups} />
             ) : tab === "typowania" ? (
-                <TypowaniaTab groups={groups} activeGroup={activeGroup} competitionType={activeGroup?.competition_type} />
+                <TypowaniaTab groups={groups} />
             ) : (
                 <GrupyTab groups={groups} />
             )}
@@ -114,113 +114,80 @@ export default async function KontoPage({
 
 // ─── Typowania tab ────────────────────────────────────────────────────────────
 
+function dateLabel(dateStr: string): string {
+    const day = dateStr.slice(0, 10);
+    const todayUtc = new Date().toISOString().slice(0, 10);
+    const tomorrowUtc = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    if (day === todayUtc) return "Dziś";
+    if (day === tomorrowUtc) return "Jutro";
+    return new Intl.DateTimeFormat("pl-PL", { weekday: "short", day: "numeric", month: "short" })
+        .format(new Date(dateStr))
+        .replace(".", "")
+        .replace(".", "");
+}
+
 async function TypowaniaTab({
     groups,
-    activeGroup,
-    competitionType,
 }: {
-    groups: { id: string; name: string; avatar_url: string | null }[];
-    activeGroup: { id: string; name: string; avatar_url: string | null } | null;
-    competitionType?: string;
+    groups: { id: string; name: string; avatar_url: string | null; competition_type: string }[];
 }) {
     // ── No groups at all ──────────────────────────────────────────────────────
-    if (!groups.length || !activeGroup) {
+    if (!groups.length) {
         return <EmptyState icon={Users01 as Parameters<typeof FeaturedIcon>[0]["icon"]} title="Brak grup" description="Utwórz grupę lub dołącz do istniejącej, aby zacząć typować." />;
     }
 
-    const { matches, predictions, competitionType: ct } = await getMatchesWithPredictions(activeGroup.id);
-    const resolvedCompetitionType = ct ?? competitionType;
-    const oddsMap = await getOdds(resolvedCompetitionType ?? "wc_2026");
-    const isEkstraklasa = resolvedCompetitionType === "ekstraklasa_2526";
+    const allEntries = await getAllGroupsMatchesWithPredictions(groups);
 
-    // Ekstraklasa: show last round (highest matchday). WC: show today's matches.
-    let displayMatches: Match[];
-    if (isEkstraklasa) {
-        const matchdays = matches.map((m) => m.matchday ?? 0).filter(Boolean);
-        const lastRound = matchdays.length > 0 ? Math.max(...matchdays) : 0;
-        displayMatches = lastRound > 0 ? matches.filter((m) => m.matchday === lastRound) : [];
-    } else {
-        const todayUtc = new Date().toISOString().slice(0, 10);
-        displayMatches = matches.filter((m) => m.match_date.slice(0, 10) === todayUtc);
+    // ── No upcoming matches ───────────────────────────────────────────────────
+    if (!allEntries.length) {
+        return <EmptyState icon={CalendarCheck01 as Parameters<typeof FeaturedIcon>[0]["icon"]} title="Brak nadchodzących meczów" description="Zaproś znajomych i typujcie razem!" />;
     }
 
-    const grouped = groupMatchesByStage(displayMatches);
-    const sortedKeys = Object.keys(grouped).sort((a, b) => {
-        const stageA = a.startsWith("matchday_") ? "group" : a;
-        const stageB = b.startsWith("matchday_") ? "group" : b;
-        const orderA = stageOrder.indexOf(stageA as any);
-        const orderB = stageOrder.indexOf(stageB as any);
-        if (orderA !== orderB) return orderA - orderB;
-        if (a.startsWith("matchday_") && b.startsWith("matchday_")) {
-            return parseInt(a.split("_")[1]) - parseInt(b.split("_")[1]);
+    // Fetch odds for each unique competition type
+    const uniqueCts = [...new Set(groups.map((g) => g.competition_type))];
+    const oddsMaps = await Promise.all(uniqueCts.map((ct) => getOdds(ct)));
+    const combinedOdds = new Map<string, import("@/lib/odds").MatchOdds>();
+    for (const m of oddsMaps) for (const [k, v] of m) combinedOdds.set(k, v);
+
+    // Group by date label, preserving order (allEntries already sorted by match_date)
+    const sectionMap = new Map<string, typeof allEntries>();
+    const sectionDateMap = new Map<string, string>(); // label → YYYY-MM-DD for sort
+    for (const entry of allEntries) {
+        const label = dateLabel(entry.match.match_date);
+        if (!sectionMap.has(label)) {
+            sectionMap.set(label, []);
+            sectionDateMap.set(label, entry.match.match_date.slice(0, 10));
         }
-        return a.localeCompare(b);
-    });
-
-    // ── No matches ───────────────────────────────────────────────────────────
-    if (sortedKeys.length === 0) {
-        return <EmptyState icon={CalendarCheck01 as Parameters<typeof FeaturedIcon>[0]["icon"]} title="Brak meczów na dziś" description="Dzisiaj nie ma zaplanowanych spotkań. Zaproś znajomych i typujcie razem!" />;
+        sectionMap.get(label)!.push(entry);
     }
 
-    // ── Has matches: show group header + cards ────────────────────────────────
+    const sortedLabels = [...sectionMap.keys()].sort((a, b) =>
+        (sectionDateMap.get(a) ?? "").localeCompare(sectionDateMap.get(b) ?? ""),
+    );
+
     return (
-        <div className="flex flex-col gap-4">
-            {/* Group selector (multiple groups) */}
-            {groups.length > 1 && (
-                <div className="flex gap-2 overflow-x-auto pb-0.5">
-                    {groups.map((g) => (
-                        <a
-                            key={g.id}
-                            href={`/konto?tab=typowania&group=${g.id}`}
-                            className={`shrink-0 rounded-full px-3 py-1.5 text-sm font-medium transition ${
-                                g.id === activeGroup.id
-                                    ? "bg-brand-solid text-white"
-                                    : "bg-secondary text-secondary hover:bg-secondary_hover"
-                            }`}
-                        >
-                            {g.name}
-                        </a>
-                    ))}
-                </div>
-            )}
-
-            {/* Group name + Ranking link */}
-            <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-tertiary">{activeGroup.name}</p>
-                <Link
-                    href={`/grupy/${activeGroup.id}`}
-                    className="flex items-center gap-1 text-sm text-brand-secondary hover:underline"
-                >
-                    Ranking &amp; Tabela
-                    <ChevronRight className="size-4" />
-                </Link>
-            </div>
-
-            {/* Match cards */}
-            <div className="flex flex-col gap-8">
-                {sortedKeys.map((key) => {
-                    const sectionMatches = grouped[key];
-                    const isMatchday = key.startsWith("matchday_");
-                    const label = isMatchday ? `Kolejka ${key.split("_")[1]}` : stageLabels[key];
-                    return (
-                        <section key={key}>
-                            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-tertiary">{label}</h2>
-                            <div className="flex flex-col gap-3">
-                                {sectionMatches.map((match) => (
-                                    <PredictionCard
-                                        key={match.id}
-                                        match={match}
-                                        groupId={activeGroup.id}
-                                        prediction={predictions.get(match.id)}
-                                        odds={oddsMap.get(`${match.home_team}|${match.away_team}`)}
-                                        competitionType={resolvedCompetitionType}
-                                    />
-                                ))}
-                            </div>
-                        </section>
-                    );
-                })}
-            </div>
+        <div className="flex flex-col gap-8">
+            {sortedLabels.map((label) => {
+                const entries = sectionMap.get(label)!;
+                return (
+                    <section key={label}>
+                        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-tertiary">{label}</h2>
+                        <div className="flex flex-col gap-3">
+                            {entries.map((entry) => (
+                                <PredictionCard
+                                    key={`${entry.match.id}-${entry.groupId}`}
+                                    match={entry.match}
+                                    groupId={entry.groupId}
+                                    groupName={groups.length > 1 ? entry.groupName : undefined}
+                                    prediction={entry.prediction}
+                                    odds={combinedOdds.get(`${entry.match.home_team}|${entry.match.away_team}`)}
+                                    competitionType={entry.competitionType}
+                                />
+                            ))}
+                        </div>
+                    </section>
+                );
+            })}
         </div>
     );
 }

@@ -18,6 +18,7 @@ interface PredictionCardProps {
     prediction?: Prediction;
     odds?: MatchOdds;
     competitionType?: string;
+    groupName?: string;
 }
 
 const stageLabels: Record<string, string> = {
@@ -138,7 +139,7 @@ function TeamFlag({ teamName, competitionType }: { teamName: string; competition
     );
 }
 
-export function PredictionCard({ match, groupId, prediction, odds, competitionType }: PredictionCardProps) {
+export function PredictionCard({ match, groupId, prediction, odds, competitionType, groupName }: PredictionCardProps) {
     const isLocked = match.status !== "upcoming";
     const isFinished = match.status === "finished";
     const isLive = match.status === "live";
@@ -294,7 +295,11 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
             <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                     <span className="text-xs font-medium text-tertiary">
-                        {match.group_name ? `Grupa ${match.group_name} · Kolejka ${match.matchday}` : stageLabels[match.stage]}
+                        {groupName
+                            ? groupName
+                            : match.group_name
+                              ? `Grupa ${match.group_name} · Kolejka ${match.matchday}`
+                              : stageLabels[match.stage]}
                     </span>
                     {isLive && (
                         <span className="flex shrink-0 items-center gap-1 rounded-full bg-error-primary px-1.5 py-0.5 text-xs font-bold text-error-primary">

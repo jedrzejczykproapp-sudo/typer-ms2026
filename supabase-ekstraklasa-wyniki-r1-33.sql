@@ -1,9 +1,8 @@
 -- ============================================================
--- Ekstraklasa 2025/26 – wyniki wszystkich 306 meczów
--- Źródło: Wikipedia (2025–26 Ekstraklasa season)
--- Uruchom PO supabase-ekstraklasa-2526.sql
+-- Ekstraklasa 2025/26 – wyniki kolejek 1–33 (bez kolejki 34)
+-- Uruchom PO supabase-ekstraklasa-fix.sql (krok 1+2)
+-- Bezpieczne: NIE nadpisuje kolejki 34 którą masz w bazie
 -- ============================================================
-
 UPDATE matches SET home_score=2, away_score=3, status='finished' WHERE home_team='Arka Gdynia' AND away_team='Bruk-Bet Termalica Nieciecza' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=2, away_score=1, status='finished' WHERE home_team='Arka Gdynia' AND away_team='Cracovia' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=2, away_score=1, status='finished' WHERE home_team='Arka Gdynia' AND away_team='GKS Katowice' AND competition_type='ekstraklasa_2526';
@@ -28,7 +27,6 @@ UPDATE matches SET home_score=1, away_score=1, status='finished' WHERE home_team
 UPDATE matches SET home_score=2, away_score=1, status='finished' WHERE home_team='Bruk-Bet Termalica Nieciecza' AND away_team='Jagiellonia Białystok' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=1, away_score=3, status='finished' WHERE home_team='Bruk-Bet Termalica Nieciecza' AND away_team='Korona Kielce' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=0, away_score=2, status='finished' WHERE home_team='Bruk-Bet Termalica Nieciecza' AND away_team='Lech Poznań' AND competition_type='ekstraklasa_2526';
-UPDATE matches SET home_score=0, away_score=1, status='finished' WHERE home_team='Bruk-Bet Termalica Nieciecza' AND away_team='Lechia Gdańsk' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=1, away_score=2, status='finished' WHERE home_team='Bruk-Bet Termalica Nieciecza' AND away_team='Legia Warszawa' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=3, away_score=2, status='finished' WHERE home_team='Bruk-Bet Termalica Nieciecza' AND away_team='Motor Lublin' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=1, away_score=1, status='finished' WHERE home_team='Bruk-Bet Termalica Nieciecza' AND away_team='Piast Gliwice' AND competition_type='ekstraklasa_2526';
@@ -43,7 +41,6 @@ UPDATE matches SET home_score=2, away_score=0, status='finished' WHERE home_team
 UPDATE matches SET home_score=1, away_score=0, status='finished' WHERE home_team='Cracovia' AND away_team='GKS Katowice' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=1, away_score=1, status='finished' WHERE home_team='Cracovia' AND away_team='Górnik Zabrze' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=0, away_score=0, status='finished' WHERE home_team='Cracovia' AND away_team='Jagiellonia Białystok' AND competition_type='ekstraklasa_2526';
-UPDATE matches SET home_score=2, away_score=2, status='finished' WHERE home_team='Cracovia' AND away_team='Korona Kielce' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=2, away_score=2, status='finished' WHERE home_team='Cracovia' AND away_team='Lech Poznań' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=2, away_score=1, status='finished' WHERE home_team='Cracovia' AND away_team='Lechia Gdańsk' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=1, away_score=2, status='finished' WHERE home_team='Cracovia' AND away_team='Legia Warszawa' AND competition_type='ekstraklasa_2526';
@@ -84,7 +81,6 @@ UPDATE matches SET home_score=3, away_score=1, status='finished' WHERE home_team
 UPDATE matches SET home_score=0, away_score=1, status='finished' WHERE home_team='Górnik Zabrze' AND away_team='Motor Lublin' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=2, away_score=1, status='finished' WHERE home_team='Górnik Zabrze' AND away_team='Piast Gliwice' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=0, away_score=1, status='finished' WHERE home_team='Górnik Zabrze' AND away_team='Pogoń Szczecin' AND competition_type='ekstraklasa_2526';
-UPDATE matches SET home_score=3, away_score=1, status='finished' WHERE home_team='Górnik Zabrze' AND away_team='Radomiak Radom' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=3, away_score=2, status='finished' WHERE home_team='Górnik Zabrze' AND away_team='Raków Częstochowa' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=1, away_score=1, status='finished' WHERE home_team='Górnik Zabrze' AND away_team='Widzew Łódź' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=0, away_score=2, status='finished' WHERE home_team='Górnik Zabrze' AND away_team='Wisła Płock' AND competition_type='ekstraklasa_2526';
@@ -105,7 +101,6 @@ UPDATE matches SET home_score=1, away_score=1, status='finished' WHERE home_team
 UPDATE matches SET home_score=1, away_score=2, status='finished' WHERE home_team='Jagiellonia Białystok' AND away_team='Raków Częstochowa' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=3, away_score=2, status='finished' WHERE home_team='Jagiellonia Białystok' AND away_team='Widzew Łódź' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=1, away_score=2, status='finished' WHERE home_team='Jagiellonia Białystok' AND away_team='Wisła Płock' AND competition_type='ekstraklasa_2526';
-UPDATE matches SET home_score=0, away_score=0, status='finished' WHERE home_team='Jagiellonia Białystok' AND away_team='Zagłębie Lubin' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=3, away_score=0, status='finished' WHERE home_team='Korona Kielce' AND away_team='Arka Gdynia' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=2, away_score=1, status='finished' WHERE home_team='Korona Kielce' AND away_team='Bruk-Bet Termalica Nieciecza' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=0, away_score=1, status='finished' WHERE home_team='Korona Kielce' AND away_team='Cracovia' AND competition_type='ekstraklasa_2526';
@@ -138,7 +133,6 @@ UPDATE matches SET home_score=2, away_score=2, status='finished' WHERE home_team
 UPDATE matches SET home_score=4, away_score=1, status='finished' WHERE home_team='Lech Poznań' AND away_team='Radomiak Radom' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=4, away_score=3, status='finished' WHERE home_team='Lech Poznań' AND away_team='Raków Częstochowa' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=2, away_score=1, status='finished' WHERE home_team='Lech Poznań' AND away_team='Widzew Łódź' AND competition_type='ekstraklasa_2526';
-UPDATE matches SET home_score=1, away_score=2, status='finished' WHERE home_team='Lech Poznań' AND away_team='Wisła Płock' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=0, away_score=1, status='finished' WHERE home_team='Lech Poznań' AND away_team='Zagłębie Lubin' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=1, away_score=0, status='finished' WHERE home_team='Lechia Gdańsk' AND away_team='Arka Gdynia' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=5, away_score=1, status='finished' WHERE home_team='Lechia Gdańsk' AND away_team='Bruk-Bet Termalica Nieciecza' AND competition_type='ekstraklasa_2526';
@@ -166,7 +160,6 @@ UPDATE matches SET home_score=0, away_score=0, status='finished' WHERE home_team
 UPDATE matches SET home_score=1, away_score=2, status='finished' WHERE home_team='Legia Warszawa' AND away_team='Korona Kielce' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=0, away_score=0, status='finished' WHERE home_team='Legia Warszawa' AND away_team='Lech Poznań' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=2, away_score=2, status='finished' WHERE home_team='Legia Warszawa' AND away_team='Lechia Gdańsk' AND competition_type='ekstraklasa_2526';
-UPDATE matches SET home_score=0, away_score=1, status='finished' WHERE home_team='Legia Warszawa' AND away_team='Motor Lublin' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=1, away_score=0, status='finished' WHERE home_team='Legia Warszawa' AND away_team='Piast Gliwice' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=4, away_score=1, status='finished' WHERE home_team='Legia Warszawa' AND away_team='Pogoń Szczecin' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=1, away_score=1, status='finished' WHERE home_team='Legia Warszawa' AND away_team='Radomiak Radom' AND competition_type='ekstraklasa_2526';
@@ -211,7 +204,6 @@ UPDATE matches SET home_score=1, away_score=3, status='finished' WHERE home_team
 UPDATE matches SET home_score=1, away_score=0, status='finished' WHERE home_team='Pogoń Szczecin' AND away_team='Arka Gdynia' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=1, away_score=1, status='finished' WHERE home_team='Pogoń Szczecin' AND away_team='Bruk-Bet Termalica Nieciecza' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=2, away_score=1, status='finished' WHERE home_team='Pogoń Szczecin' AND away_team='Cracovia' AND competition_type='ekstraklasa_2526';
-UPDATE matches SET home_score=0, away_score=3, status='finished' WHERE home_team='Pogoń Szczecin' AND away_team='GKS Katowice' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=1, away_score=2, status='finished' WHERE home_team='Pogoń Szczecin' AND away_team='Górnik Zabrze' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=2, away_score=1, status='finished' WHERE home_team='Pogoń Szczecin' AND away_team='Jagiellonia Białystok' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=1, away_score=2, status='finished' WHERE home_team='Pogoń Szczecin' AND away_team='Korona Kielce' AND competition_type='ekstraklasa_2526';
@@ -242,7 +234,6 @@ UPDATE matches SET home_score=3, away_score=1, status='finished' WHERE home_team
 UPDATE matches SET home_score=2, away_score=1, status='finished' WHERE home_team='Radomiak Radom' AND away_team='Widzew Łódź' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=1, away_score=1, status='finished' WHERE home_team='Radomiak Radom' AND away_team='Wisła Płock' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=3, away_score=1, status='finished' WHERE home_team='Radomiak Radom' AND away_team='Zagłębie Lubin' AND competition_type='ekstraklasa_2526';
-UPDATE matches SET home_score=1, away_score=0, status='finished' WHERE home_team='Raków Częstochowa' AND away_team='Arka Gdynia' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=4, away_score=1, status='finished' WHERE home_team='Raków Częstochowa' AND away_team='Bruk-Bet Termalica Nieciecza' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=1, away_score=0, status='finished' WHERE home_team='Raków Częstochowa' AND away_team='Cracovia' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=0, away_score=1, status='finished' WHERE home_team='Raków Częstochowa' AND away_team='GKS Katowice' AND competition_type='ekstraklasa_2526';
@@ -270,7 +261,6 @@ UPDATE matches SET home_score=2, away_score=1, status='finished' WHERE home_team
 UPDATE matches SET home_score=3, away_score=1, status='finished' WHERE home_team='Widzew Łódź' AND away_team='Lechia Gdańsk' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=1, away_score=1, status='finished' WHERE home_team='Widzew Łódź' AND away_team='Legia Warszawa' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=2, away_score=0, status='finished' WHERE home_team='Widzew Łódź' AND away_team='Motor Lublin' AND competition_type='ekstraklasa_2526';
-UPDATE matches SET home_score=1, away_score=2, status='finished' WHERE home_team='Widzew Łódź' AND away_team='Piast Gliwice' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=3, away_score=2, status='finished' WHERE home_team='Widzew Łódź' AND away_team='Pogoń Szczecin' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=0, away_score=1, status='finished' WHERE home_team='Widzew Łódź' AND away_team='Radomiak Radom' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=1, away_score=0, status='finished' WHERE home_team='Widzew Łódź' AND away_team='Raków Częstochowa' AND competition_type='ekstraklasa_2526';
@@ -310,5 +300,3 @@ UPDATE matches SET home_score=1, away_score=0, status='finished' WHERE home_team
 UPDATE matches SET home_score=0, away_score=0, status='finished' WHERE home_team='Zagłębie Lubin' AND away_team='Raków Częstochowa' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=2, away_score=1, status='finished' WHERE home_team='Zagłębie Lubin' AND away_team='Widzew Łódź' AND competition_type='ekstraklasa_2526';
 UPDATE matches SET home_score=2, away_score=0, status='finished' WHERE home_team='Zagłębie Lubin' AND away_team='Wisła Płock' AND competition_type='ekstraklasa_2526';
-
--- Zaktualizowano 306 meczów

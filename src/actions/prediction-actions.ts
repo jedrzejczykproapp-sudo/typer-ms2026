@@ -111,6 +111,74 @@ export async function getLeaderboard(groupId: string): Promise<LeaderboardEntry[
     return stats;
 }
 
+export type MatchWithGroup = {
+    match: Match;
+    groupId: string;
+    groupName: string;
+    competitionType: string;
+    prediction: Prediction | undefined;
+};
+
+export async function getAllGroupsMatchesWithPredictions(
+    groups: { id: string; name: string; competition_type: string }[],
+): Promise<MatchWithGroup[]> {
+    if (!groups.length) return [];
+
+    const supabase = await createClient();
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+
+    const competitionTypes = [...new Set(groups.map((g) => g.competition_type))];
+
+    // map competition_type → groups that cover it
+    const ctToGroups = new Map<string, { id: string; name: string }[]>();
+    for (const g of groups) {
+        if (!ctToGroups.has(g.competition_type)) ctToGroups.set(g.competition_type, []);
+        ctToGroups.get(g.competition_type)!.push({ id: g.id, name: g.name });
+    }
+
+    // fetch relevant matches: today onwards (upcoming/live) + today's finished
+    const todayStart = new Date();
+    todayStart.setUTCHours(0, 0, 0, 0);
+
+    const { data: matches } = await supabase
+        .from("matches")
+        .select("*")
+        .in("competition_type", competitionTypes)
+        .gte("match_date", todayStart.toISOString())
+        .order("match_date", { ascending: true })
+        .order("home_team", { ascending: true });
+
+    if (!matches?.length) return [];
+
+    // fetch predictions for all groups
+    const groupIds = groups.map((g) => g.id);
+    const { data: predictions } = user
+        ? await supabase.from("predictions").select("*").in("group_id", groupIds).eq("user_id", user.id)
+        : { data: [] };
+
+    const predMap = new Map(
+        (predictions ?? []).map((p) => [`${p.match_id}:${p.group_id}`, p as Prediction]),
+    );
+
+    const result: MatchWithGroup[] = [];
+    for (const match of matches as (Match & { competition_type: string })[]) {
+        const coveringGroups = ctToGroups.get(match.competition_type) ?? [];
+        for (const g of coveringGroups) {
+            result.push({
+                match,
+                groupId: g.id,
+                groupName: g.name,
+                competitionType: match.competition_type,
+                prediction: predMap.get(`${match.id}:${g.id}`),
+            });
+        }
+    }
+
+    return result;
+}
+
 export async function getAllPredictionsForMatch(matchId: string, groupId: string) {
     const supabase = await createClient();
 
