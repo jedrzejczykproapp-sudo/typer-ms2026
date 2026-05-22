@@ -173,12 +173,16 @@ export async function deleteGroup(groupId: string) {
     const { data: group } = await supabase.from("groups").select("created_by").eq("id", groupId).single();
     if (!group || group.created_by !== user.id) return { error: "Brak uprawnień" };
 
-    // Delete child rows first (RLS: user can delete own predictions; DB CASCADE handles the rest)
-    await supabase.from("predictions").delete().eq("group_id", groupId).eq("user_id", user.id);
-    await supabase.from("group_members").delete().eq("group_id", groupId);
+    // DB has ON DELETE CASCADE on group_members and predictions — deleting the group cascades.
+    // Use .select() so we can detect when RLS silently blocks the delete (returns empty array, no error).
+    const { data: deleted, error } = await supabase
+        .from("groups")
+        .delete()
+        .eq("id", groupId)
+        .select("id");
 
-    const { error } = await supabase.from("groups").delete().eq("id", groupId);
     if (error) return { error: error.message };
+    if (!deleted?.length) return { error: "Nie można usunąć grupy. Uruchom skrypt supabase-rls-policies.sql w Supabase SQL Editor." };
 
     revalidatePath("/grupy");
     revalidatePath("/konto");
@@ -196,8 +200,15 @@ export async function leaveGroup(groupId: string) {
     const { data: group } = await supabase.from("groups").select("created_by").eq("id", groupId).single();
     if (group?.created_by === user.id) return { error: "Admin nie może opuścić grupy — usuń grupę lub przekaż prawa." };
 
-    const { error } = await supabase.from("group_members").delete().eq("group_id", groupId).eq("user_id", user.id);
+    const { data: deleted, error } = await supabase
+        .from("group_members")
+        .delete()
+        .eq("group_id", groupId)
+        .eq("user_id", user.id)
+        .select("user_id");
+
     if (error) return { error: error.message };
+    if (!deleted?.length) return { error: "Nie można opuścić grupy. Uruchom skrypt supabase-rls-policies.sql w Supabase SQL Editor." };
 
     revalidatePath("/grupy");
     revalidatePath("/konto");
