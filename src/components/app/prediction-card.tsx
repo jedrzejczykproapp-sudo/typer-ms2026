@@ -423,20 +423,17 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
 
             {/* Odds row — upcoming only */}
             {odds && !isTbd && !isLocked && (
-                <div className="flex items-center justify-center gap-2 border-t border-secondary pt-3">
-                    <span className="text-xs text-tertiary">Kursy:</span>
-                    <div className="flex gap-2">
-                        {[
-                            { label: "1", value: odds.home },
-                            { label: "X", value: odds.draw },
-                            { label: "2", value: odds.away },
-                        ].map(({ label, value }) => (
-                            <div key={label} className="flex items-center gap-1 rounded-md bg-secondary px-2 py-0.5">
-                                <span className="text-xs text-tertiary">{label}</span>
-                                <span className="text-xs font-semibold tabular-nums text-primary">{value.toFixed(2)}</span>
-                            </div>
-                        ))}
-                    </div>
+                <div className="flex gap-2 border-t border-secondary pt-3">
+                    {[
+                        { label: "1", value: odds.home },
+                        { label: "X", value: odds.draw },
+                        { label: "2", value: odds.away },
+                    ].map(({ label, value }) => (
+                        <div key={label} className="flex flex-1 items-center justify-center gap-1 rounded-md bg-secondary py-1">
+                            <span className="text-xs text-tertiary">{label}</span>
+                            <span className="text-xs font-semibold tabular-nums text-primary">{value.toFixed(2)}</span>
+                        </div>
+                    ))}
                 </div>
             )}
 
