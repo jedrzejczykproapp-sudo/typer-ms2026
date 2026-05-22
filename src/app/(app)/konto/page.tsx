@@ -279,7 +279,7 @@ async function GrupyTab({
                                 href={`/grupy/${group.id}`}
                                 className="flex items-center gap-3 rounded-xl border border-secondary bg-primary px-4 py-3 shadow-xs transition hover:bg-primary_hover"
                             >
-                                <div className="size-10 shrink-0 overflow-hidden rounded-lg bg-secondary">
+                                <div className={`size-10 shrink-0 overflow-hidden rounded-lg ${group.avatar_url ? "bg-secondary" : "border border-secondary"}`}>
                                     {group.avatar_url ? (
                                         <img src={group.avatar_url} alt={group.name} className="size-full object-cover" />
                                     ) : (

@@ -44,7 +44,7 @@ export function GroupSwitcherDrawer({
                 onClick={() => setIsOpen(true)}
                 className="flex items-center gap-3 text-left"
             >
-                <div className="size-12 shrink-0 overflow-hidden rounded-xl bg-secondary">
+                <div className={`size-12 shrink-0 overflow-hidden rounded-xl ${currentGroupAvatar ? "bg-secondary" : "border border-secondary"}`}>
                     {currentGroupAvatar ? (
                         <img src={currentGroupAvatar} alt={currentGroupName} className="size-full object-cover" />
                     ) : (
@@ -95,7 +95,7 @@ export function GroupSwitcherDrawer({
                                         )}
                                     >
                                         {/* Avatar */}
-                                        <div className="size-10 shrink-0 overflow-hidden rounded-lg bg-secondary_hover">
+                                        <div className={`size-10 shrink-0 overflow-hidden rounded-lg ${group.avatar_url ? "bg-secondary_hover" : "border border-secondary"}`}>
                                             {group.avatar_url ? (
                                                 <img src={group.avatar_url} alt={group.name} className="size-full object-cover" />
                                             ) : (
