@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getMatchesWithPredictions, getLeaderboard } from "@/actions/prediction-actions";
 import { getOdds } from "@/lib/odds";
@@ -9,6 +8,7 @@ import { PredictionCard } from "@/components/app/prediction-card";
 import { LeaderboardTable } from "@/components/app/leaderboard-table";
 import { GroupSettingsMenu } from "@/components/app/group-settings-menu";
 import { GroupSwitcherDrawer } from "@/components/app/group-switcher-drawer";
+import { GroupTabPanel } from "./tab-panel";
 import type { Match } from "@/types/database";
 
 const stageOrder = ["group", "round_of_32", "round_of_16", "quarter", "semi", "third_place", "final"] as const;
@@ -21,12 +21,6 @@ const stageLabels: Record<string, string> = {
     third_place: "Mecz o 3. miejsce",
     final: "Finał",
 };
-
-const TABS = [
-    { key: "typowania", label: "Typowania" },
-    { key: "tabela", label: "Ranking" },
-    { key: "grupy", label: "Tabela" },
-] as const;
 
 function groupMatchesByStage(matches: Match[]) {
     const grouped: Record<string, Match[]> = {};
@@ -96,30 +90,12 @@ export default async function GroupPage({
                     />
                 </div>
 
-                {/* Tabs */}
-                <div className="flex gap-1 rounded-xl bg-secondary p-1">
-                    {TABS.map(({ key, label }) => (
-                        <Link
-                            key={key}
-                            href={`/grupy/${id}?tab=${key}`}
-                            scroll={false}
-                            className={`flex-1 rounded-lg py-2 text-center text-sm font-semibold transition ${
-                                tab === key ? "bg-primary text-primary shadow-xs" : "text-tertiary hover:text-secondary"
-                            }`}
-                        >
-                            {label}
-                        </Link>
-                    ))}
-                </div>
-
-                {/* Tab content */}
-                {tab === "typowania" ? (
-                    <TypowaniaTab groupId={id} userId={user!.id} />
-                ) : tab === "tabela" ? (
-                    <TabelaTab groupId={id} userId={user!.id} />
-                ) : (
-                    <GrupyTab competitionType={group.competition_type ?? "wc_2026"} />
-                )}
+                <GroupTabPanel
+                    defaultTab={tab}
+                    typowaniaContent={<TypowaniaTab groupId={id} userId={user!.id} />}
+                    tabelaContent={<TabelaTab groupId={id} userId={user!.id} />}
+                    grupyContent={<GrupyTab competitionType={group.competition_type ?? "wc_2026"} />}
+                />
             </div>
         </>
     );

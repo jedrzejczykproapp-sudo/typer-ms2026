@@ -11,13 +11,8 @@ import { PredictionCard } from "@/components/app/prediction-card";
 import { CreateGroupModal } from "@/components/app/group-modals";
 import { JoinGroupModal } from "@/components/app/group-modals";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
+import { KontoTabPanel } from "./tab-panel";
 import type { Match } from "@/types/database";
-
-const TABS = [
-    { key: "typowania", label: "Typowania" },
-    { key: "statystyki", label: "Statystyki" },
-    { key: "grupy", label: "Grupy" },
-] as const;
 
 const stageOrder = ["group", "round_of_32", "round_of_16", "quarter", "semi", "third_place", "final"] as const;
 const stageLabels: Record<string, string> = {
@@ -106,32 +101,13 @@ export default async function KontoPage({
                 />
             </div>
 
-            {/* Tabs */}
-            <div className="flex gap-1 rounded-xl bg-secondary p-1">
-                {TABS.map(({ key, label }) => (
-                    <Link
-                        key={key}
-                        href={`/konto?tab=${key}`}
-                        scroll={false}
-                        className={`relative flex-1 rounded-lg py-2 text-center text-sm font-semibold transition ${
-                            tab === key ? "bg-primary text-primary shadow-xs" : "text-tertiary hover:text-secondary"
-                        }`}
-                    >
-                        {label}
-                        {key === "typowania" && hasTodayMatches && (
-                            <span className="absolute right-3 top-1/2 size-1.5 -translate-y-1/2 rounded-full bg-brand-solid animate-pulse" />
-                        )}
-                    </Link>
-                ))}
-            </div>
-
-            {tab === "statystyki" ? (
-                <StatystykiTab userId={user.id} groups={groups} />
-            ) : tab === "typowania" ? (
-                <TypowaniaTab groups={groups} />
-            ) : (
-                <GrupyTab groups={groups} />
-            )}
+            <KontoTabPanel
+                defaultTab={tab}
+                hasTodayMatches={hasTodayMatches}
+                typowaniaContent={<TypowaniaTab groups={groups} />}
+                statystykiContent={<StatystykiTab userId={user.id} groups={groups} />}
+                grupyContent={<GrupyTab groups={groups} />}
+            />
         </div>
     );
 }
