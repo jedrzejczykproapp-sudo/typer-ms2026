@@ -253,9 +253,9 @@ async function GrupyTab({
 
     return (
         <div className="flex flex-col gap-4">
-            <div className="flex gap-3">
-                <CreateGroupModal />
-                <JoinGroupModal />
+            <div className="flex flex-col gap-3 sm:flex-row">
+                <CreateGroupModal buttonClassName="w-full sm:w-auto" />
+                <JoinGroupModal buttonClassName="w-full sm:w-auto" />
             </div>
 
             {groups.length === 0 ? (
