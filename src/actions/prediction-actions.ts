@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { LeaderboardEntry, Match, Prediction } from "@/types/database";
 
@@ -26,7 +25,6 @@ export async function upsertPrediction(matchId: string, groupId: string, predict
 
     if (error) return { error: error.message };
 
-    revalidatePath(`/grupy/${groupId}`);
     return { success: true };
 }
 

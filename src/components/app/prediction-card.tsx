@@ -194,22 +194,8 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
         if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
         autoSaveTimerRef.current = setTimeout(async () => {
             const { home, away } = latestScores.current;
-            const result = await upsertPrediction(match.id, groupId, home, away);
-            if (!result?.error) {
-                setLocalPrediction({
-                    id: localPrediction?.id ?? "",
-                    user_id: localPrediction?.user_id ?? "",
-                    match_id: match.id,
-                    group_id: groupId,
-                    predicted_home: home,
-                    predicted_away: away,
-                    points: localPrediction?.points ?? null,
-                    created_at: localPrediction?.created_at ?? new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
-                });
-                setSaved(true);
-                setTimeout(() => setSaved(false), 2000);
-            }
+            await upsertPrediction(match.id, groupId, home, away);
+            // localPrediction already set optimistically in handleHomeChange / handleAwayChange
         }, 700);
     }
 
@@ -312,12 +298,36 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
     function handleHomeChange(v: number) {
         hasUserChangedRef.current = true;
         setHomeScore(v);
+        // Optimistic update → "Typ zapisany" visible immediately
+        setLocalPrediction((prev) => ({
+            id: prev?.id ?? "",
+            user_id: prev?.user_id ?? "",
+            match_id: match.id,
+            group_id: groupId,
+            predicted_home: v,
+            predicted_away: latestScores.current.away,
+            points: prev?.points ?? null,
+            created_at: prev?.created_at ?? new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        }));
         scheduleAutoSave();
     }
 
     function handleAwayChange(v: number) {
         hasUserChangedRef.current = true;
         setAwayScore(v);
+        // Optimistic update → "Typ zapisany" visible immediately
+        setLocalPrediction((prev) => ({
+            id: prev?.id ?? "",
+            user_id: prev?.user_id ?? "",
+            match_id: match.id,
+            group_id: groupId,
+            predicted_home: latestScores.current.home,
+            predicted_away: v,
+            points: prev?.points ?? null,
+            created_at: prev?.created_at ?? new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        }));
         scheduleAutoSave();
     }
 
