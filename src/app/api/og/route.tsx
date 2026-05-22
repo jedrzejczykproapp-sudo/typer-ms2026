@@ -131,7 +131,7 @@ export async function GET(request: Request) {
                             margin: 0,
                         }}
                     >
-                        typerek-com.vercel.app
+                        typerek.com
                     </p>
                 </div>
             </div>

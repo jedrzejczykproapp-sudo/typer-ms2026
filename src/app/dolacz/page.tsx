@@ -5,7 +5,7 @@ import { Logo } from "@/components/app/logo";
 import { Button } from "@/components/base/buttons/button";
 import { JoinClient } from "./join-client";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://typerek-com.vercel.app";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://typerek.com";
 
 type Props = {
     searchParams: Promise<{ kod?: string }>;
