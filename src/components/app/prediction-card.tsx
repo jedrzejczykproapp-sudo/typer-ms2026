@@ -6,7 +6,7 @@ import { Button } from "@/components/base/buttons/button";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { upsertPrediction } from "@/actions/prediction-actions";
 import { getFlagUrl, getTeamNamePl } from "@/lib/flags";
-import { getClubCrestUrl, getClubNameLines } from "@/lib/clubs";
+import { getClubCrestUrl, getClubDisplayName } from "@/lib/clubs";
 import { createClient } from "@/lib/supabase/client";
 import type { Match, Prediction } from "@/types/database";
 import type { MatchOdds } from "@/lib/odds";
@@ -324,11 +324,9 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                         </p>
                     )}
 
-                    {/* Score + teams — układ: [herb/flaga wyśrodkowana pod wynikiem] */}
+                    {/* Wiersz 1: wynik — [:] wyrównany do cyfr */}
                     <div className="flex items-center gap-2">
-
-                        {/* Gospodarz */}
-                        <div className="flex flex-1 flex-col items-center gap-2">
+                        <div className="flex flex-1 justify-center">
                             {isFinished ? (
                                 <span className="text-4xl font-bold tabular-nums text-primary">{match.home_score}</span>
                             ) : isLive ? (
@@ -336,32 +334,9 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                             ) : (
                                 <ScoreInput value={homeScore} onChange={setHomeScore} disabled={false} />
                             )}
-                            <TeamFlag teamName={match.home_team} competitionType={competitionType} />
-                            {competitionType === "ekstraklasa_2526" ? (
-                                <div className="flex flex-col items-center leading-tight">
-                                    {getClubNameLines(match.home_team).map((line, i) => line ? (
-                                        <span key={i} className="text-center text-sm font-semibold text-primary">{line}</span>
-                                    ) : null)}
-                                </div>
-                            ) : (
-                                <span className="line-clamp-2 text-center text-sm font-semibold leading-tight text-primary">
-                                    {getTeamNamePl(match.home_team)}
-                                </span>
-                            )}
                         </div>
-
-                        {/* Separator */}
-                        <div className="flex shrink-0 flex-col items-center gap-1 self-stretch justify-center">
-                            {isLive ? (
-                                <span className="text-2xl font-bold text-error-primary">:</span>
-                            ) : (
-                                <span className="text-2xl font-bold text-tertiary">:</span>
-                            )}
-                            <span className="text-[10px] font-medium text-quaternary">vs</span>
-                        </div>
-
-                        {/* Gość */}
-                        <div className="flex flex-1 flex-col items-center gap-2">
+                        <span className={cx("shrink-0 text-2xl font-bold", isLive ? "text-error-primary" : "text-tertiary")}>:</span>
+                        <div className="flex flex-1 justify-center">
                             {isFinished ? (
                                 <span className="text-4xl font-bold tabular-nums text-primary">{match.away_score}</span>
                             ) : isLive ? (
@@ -369,18 +344,29 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                             ) : (
                                 <ScoreInput value={awayScore} onChange={setAwayScore} disabled={false} />
                             )}
+                        </div>
+                    </div>
+
+                    {/* Wiersz 2: herb/flaga + nazwa — wyśrodkowane pod wynikiem */}
+                    <div className="flex items-start gap-2">
+                        <div className="flex flex-1 flex-col items-center gap-2">
+                            <TeamFlag teamName={match.home_team} competitionType={competitionType} />
+                            <span className="line-clamp-2 w-full text-center text-sm font-semibold leading-tight text-primary">
+                                {competitionType === "ekstraklasa_2526"
+                                    ? getClubDisplayName(match.home_team)
+                                    : getTeamNamePl(match.home_team)}
+                            </span>
+                        </div>
+                        <div className="flex shrink-0 items-center justify-center pt-3">
+                            <span className="text-[10px] font-medium text-quaternary">vs</span>
+                        </div>
+                        <div className="flex flex-1 flex-col items-center gap-2">
                             <TeamFlag teamName={match.away_team} competitionType={competitionType} />
-                            {competitionType === "ekstraklasa_2526" ? (
-                                <div className="flex flex-col items-center leading-tight">
-                                    {getClubNameLines(match.away_team).map((line, i) => line ? (
-                                        <span key={i} className="text-center text-sm font-semibold text-primary">{line}</span>
-                                    ) : null)}
-                                </div>
-                            ) : (
-                                <span className="line-clamp-2 text-center text-sm font-semibold leading-tight text-primary">
-                                    {getTeamNamePl(match.away_team)}
-                                </span>
-                            )}
+                            <span className="line-clamp-2 w-full text-center text-sm font-semibold leading-tight text-primary">
+                                {competitionType === "ekstraklasa_2526"
+                                    ? getClubDisplayName(match.away_team)
+                                    : getTeamNamePl(match.away_team)}
+                            </span>
                         </div>
                     </div>
 
