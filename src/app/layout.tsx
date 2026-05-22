@@ -19,6 +19,7 @@ export const metadata: Metadata = {
             { url: "/favicon-light.svg", type: "image/svg+xml", media: "(prefers-color-scheme: light)" },
             { url: "/favicon-dark.svg",  type: "image/svg+xml", media: "(prefers-color-scheme: dark)" },
         ],
+        apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
     },
 };
 
