@@ -125,7 +125,17 @@ async function TypowaniaTab({ groupId, userId }: { groupId: string; userId: stri
         getWcOdds(),
     ]);
 
-    const grouped = groupMatchesByStage(matches);
+    // Ekstraklasa: show current/upcoming round only (not all 306 matches)
+    let displayMatches = matches;
+    if (competitionType === "ekstraklasa_2526") {
+        const upcoming = matches.filter((m) => m.status === "upcoming" || m.status === "live");
+        const targetRound = upcoming.length > 0
+            ? Math.min(...upcoming.map((m) => m.matchday ?? 99))
+            : Math.max(...matches.map((m) => m.matchday ?? 0));
+        displayMatches = matches.filter((m) => m.matchday === targetRound);
+    }
+
+    const grouped = groupMatchesByStage(displayMatches);
 
     const sortedKeys = Object.keys(grouped).sort((a, b) => {
         const stageA = a.startsWith("matchday_") ? "group" : a;

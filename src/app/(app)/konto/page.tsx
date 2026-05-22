@@ -133,12 +133,22 @@ async function TypowaniaTab({
         getWcOdds(),
     ]);
     const resolvedCompetitionType = ct ?? competitionType;
+    const isEkstraklasa = resolvedCompetitionType === "ekstraklasa_2526";
 
-    // Filter to today only
-    const todayUtc = new Date().toISOString().slice(0, 10);
-    const todayMatches = matches.filter((m) => m.match_date.slice(0, 10) === todayUtc);
+    // Ekstraklasa: show current/upcoming round. WC: show today's matches.
+    let displayMatches: Match[];
+    if (isEkstraklasa) {
+        const upcoming = matches.filter((m) => m.status === "upcoming" || m.status === "live");
+        const targetRound = upcoming.length > 0
+            ? Math.min(...upcoming.map((m) => m.matchday ?? 99))
+            : Math.max(...matches.map((m) => m.matchday ?? 0));
+        displayMatches = matches.filter((m) => m.matchday === targetRound);
+    } else {
+        const todayUtc = new Date().toISOString().slice(0, 10);
+        displayMatches = matches.filter((m) => m.match_date.slice(0, 10) === todayUtc);
+    }
 
-    const grouped = groupMatchesByStage(todayMatches);
+    const grouped = groupMatchesByStage(displayMatches);
     const sortedKeys = Object.keys(grouped).sort((a, b) => {
         const stageA = a.startsWith("matchday_") ? "group" : a;
         const stageB = b.startsWith("matchday_") ? "group" : b;
@@ -151,7 +161,7 @@ async function TypowaniaTab({
         return a.localeCompare(b);
     });
 
-    // ── No matches today ──────────────────────────────────────────────────────
+    // ── No matches ───────────────────────────────────────────────────────────
     if (sortedKeys.length === 0) {
         return <EmptyState icon={CalendarCheck01 as Parameters<typeof FeaturedIcon>[0]["icon"]} title="Brak meczów na dziś" description="Dzisiaj nie ma zaplanowanych spotkań. Zaproś znajomych i typujcie razem!" />;
     }
