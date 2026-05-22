@@ -135,14 +135,12 @@ async function TypowaniaTab({
     const resolvedCompetitionType = ct ?? competitionType;
     const isEkstraklasa = resolvedCompetitionType === "ekstraklasa_2526";
 
-    // Ekstraklasa: show current/upcoming round. WC: show today's matches.
+    // Ekstraklasa: show last round (highest matchday). WC: show today's matches.
     let displayMatches: Match[];
     if (isEkstraklasa) {
-        const upcoming = matches.filter((m) => m.status === "upcoming" || m.status === "live");
-        const targetRound = upcoming.length > 0
-            ? Math.min(...upcoming.map((m) => m.matchday ?? 99))
-            : Math.max(...matches.map((m) => m.matchday ?? 0));
-        displayMatches = matches.filter((m) => m.matchday === targetRound);
+        const matchdays = matches.map((m) => m.matchday ?? 0).filter(Boolean);
+        const lastRound = matchdays.length > 0 ? Math.max(...matchdays) : 0;
+        displayMatches = lastRound > 0 ? matches.filter((m) => m.matchday === lastRound) : [];
     } else {
         const todayUtc = new Date().toISOString().slice(0, 10);
         displayMatches = matches.filter((m) => m.match_date.slice(0, 10) === todayUtc);

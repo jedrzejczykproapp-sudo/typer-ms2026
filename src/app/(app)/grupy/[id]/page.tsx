@@ -125,14 +125,12 @@ async function TypowaniaTab({ groupId, userId }: { groupId: string; userId: stri
         getWcOdds(),
     ]);
 
-    // Ekstraklasa: show current/upcoming round only (not all 306 matches)
+    // Ekstraklasa: show last round (highest matchday) only
     let displayMatches = matches;
     if (competitionType === "ekstraklasa_2526") {
-        const upcoming = matches.filter((m) => m.status === "upcoming" || m.status === "live");
-        const targetRound = upcoming.length > 0
-            ? Math.min(...upcoming.map((m) => m.matchday ?? 99))
-            : Math.max(...matches.map((m) => m.matchday ?? 0));
-        displayMatches = matches.filter((m) => m.matchday === targetRound);
+        const matchdays = matches.map((m) => m.matchday ?? 0).filter(Boolean);
+        const lastRound = matchdays.length > 0 ? Math.max(...matchdays) : 0;
+        displayMatches = lastRound > 0 ? matches.filter((m) => m.matchday === lastRound) : matches;
     }
 
     const grouped = groupMatchesByStage(displayMatches);
