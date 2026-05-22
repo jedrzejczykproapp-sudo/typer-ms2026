@@ -1,9 +1,10 @@
 // Club crests for Ekstraklasa PKO BP 2025/2026.
-// URLs use Wikimedia Commons Special:FilePath redirect — stable regardless of internal path changes.
-// Filenames sourced from English Wikipedia infoboxes (confirmed per-club).
+// URLs use English Wikipedia Special:FilePath — resolves files stored on either
+// en.wikipedia.org OR Wikimedia Commons, so it works regardless of where each
+// club's logo is hosted. Filenames confirmed from Wikipedia API thumbnail responses.
 // If a URL returns 404 the TeamFlag component falls back to showing the team's initial letter.
 
-const BASE = "https://commons.wikimedia.org/wiki/Special:FilePath/";
+const BASE = "https://en.wikipedia.org/wiki/Special:FilePath/";
 
 const EKSTRAKLASA_CRESTS: Record<string, string> = {
     "Arka Gdynia":                  `${BASE}Arka_Gdynia_crest.svg`,
