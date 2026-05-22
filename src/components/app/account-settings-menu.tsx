@@ -4,6 +4,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "re
 import { Camera01, DotsVertical, Moon01, Sun, Trash01, X } from "@untitledui/icons";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/base/buttons/button";
+import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Input } from "@/components/base/input/input";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { createClient } from "@/lib/supabase/client";
@@ -195,14 +196,13 @@ export function AccountSettingsMenu({ displayName, avatarUrl, email, userId }: A
 
     return (
         <>
-            {/* Trigger: three-dots menu button */}
-            <button
-                type="button"
+            <ButtonUtility
+                icon={DotsVertical}
+                color="secondary"
+                size="sm"
+                tooltip="Ustawienia konta"
                 onClick={open}
-                className="rounded-lg p-1.5 text-fg-quaternary transition hover:bg-secondary hover:text-fg-tertiary"
-            >
-                <DotsVertical className="size-5" />
-            </button>
+            />
 
             {isOpen && (
                 <>
