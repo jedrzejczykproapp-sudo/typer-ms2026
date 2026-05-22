@@ -173,6 +173,10 @@ export async function deleteGroup(groupId: string) {
     const { data: group } = await supabase.from("groups").select("created_by").eq("id", groupId).single();
     if (!group || group.created_by !== user.id) return { error: "Brak uprawnień" };
 
+    // Delete child rows first to avoid FK constraint violations
+    await supabase.from("predictions").delete().eq("group_id", groupId);
+    await supabase.from("group_members").delete().eq("group_id", groupId);
+
     const { error } = await supabase.from("groups").delete().eq("id", groupId);
     if (error) return { error: error.message };
 
