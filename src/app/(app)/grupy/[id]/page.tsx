@@ -3,7 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getMatchesWithPredictions, getLeaderboard } from "@/actions/prediction-actions";
 import { getOdds } from "@/lib/odds";
 import { getFlagUrl, getTeamNamePl } from "@/lib/flags";
-import { getClubCrestUrl } from "@/lib/clubs";
+import { getClubCrestUrl, getClubDisplayName } from "@/lib/clubs";
+import { EKSTRAKLASA_STANDINGS, STANDINGS_ROUND } from "@/lib/ekstraklasa-standings";
 import { PredictionCard } from "@/components/app/prediction-card";
 import { LeaderboardTable } from "@/components/app/leaderboard-table";
 import { GroupSettingsMenu } from "@/components/app/group-settings-menu";
@@ -222,37 +223,15 @@ function sortStandings(teams: TeamStats[]) {
 }
 
 async function GrupyTab({ competitionType = "wc_2026" }: { competitionType?: string }) {
-    const supabase = await createClient();
     const isEkstraklasa = competitionType === "ekstraklasa_2526";
 
-    const { data: matches } = await supabase
-        .from("matches")
-        .select("home_team, away_team, home_score, away_score, status, group_name")
-        .eq("stage", "group")
-        .eq("competition_type", competitionType)
-        .order("group_name", { ascending: true });
-
-    if (!matches?.length) return <p className="text-sm text-tertiary">Brak danych.</p>;
-
-    // ── Ekstraklasa: single full league table ─────────────────────────────────
+    // ── Ekstraklasa: use official standings data (no DB query needed) ─────────
     if (isEkstraklasa) {
-        const standings: Record<string, TeamStats> = {};
-
-        for (const m of matches) {
-            if (!standings[m.home_team]) standings[m.home_team] = { team: m.home_team, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, points: 0 };
-            if (!standings[m.away_team]) standings[m.away_team] = { team: m.away_team, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, points: 0 };
-
-            if (m.status === "finished" && m.home_score !== null && m.away_score !== null) {
-                applyResult(standings, m.home_team, m.away_team, m.home_score as number, m.away_score as number);
-            }
-        }
-
-        const teams = sortStandings(Object.values(standings));
-
         return (
             <div className="overflow-hidden rounded-xl border border-secondary bg-primary shadow-xs">
-                <div className="border-b border-secondary px-4 py-2.5">
+                <div className="flex items-center justify-between border-b border-secondary px-4 py-2.5">
                     <h3 className="text-sm font-bold text-primary">Ekstraklasa PKO BP 2025/26</h3>
+                    <span className="text-xs text-tertiary">po {STANDINGS_ROUND}. kolejce</span>
                 </div>
 
                 {/* Column headers */}
@@ -266,38 +245,63 @@ async function GrupyTab({ competitionType = "wc_2026" }: { competitionType?: str
                 </div>
 
                 {/* Team rows */}
-                {teams.map((team, idx) => {
+                {EKSTRAKLASA_STANDINGS.map((team, idx) => {
                     const crestUrl = getClubCrestUrl(team.team);
+                    const displayName = getClubDisplayName(team.team);
                     return (
                         <div
                             key={team.team}
                             className={`grid grid-cols-[20px_1fr_28px_28px_28px_32px] items-center px-3 py-2 ${
-                                idx < teams.length - 1 ? "border-b border-secondary" : ""
+                                idx < EKSTRAKLASA_STANDINGS.length - 1 ? "border-b border-secondary" : ""
                             }`}
                         >
                             <span className="text-center text-xs tabular-nums text-tertiary">{idx + 1}</span>
                             <div className="flex min-w-0 items-center gap-2">
                                 {crestUrl ? (
-                                    <img src={crestUrl} alt={team.team} className="size-5 shrink-0 rounded object-contain" />
+                                    <img src={crestUrl} alt={displayName} className="size-5 shrink-0 rounded object-contain" />
                                 ) : (
                                     <div className="flex size-5 shrink-0 items-center justify-center rounded bg-secondary text-[10px] font-bold text-tertiary">
                                         {team.team.charAt(0)}
                                     </div>
                                 )}
-                                <span className="truncate text-sm text-primary">{team.team}</span>
+                                <span className="truncate text-sm text-primary">{displayName}</span>
                             </div>
                             <span className="text-center text-sm tabular-nums text-primary">{team.played}</span>
                             <span className="text-center text-sm tabular-nums text-primary">{team.gf}</span>
                             <span className="text-center text-sm tabular-nums text-primary">{team.ga}</span>
-                            <span className="text-center text-sm font-bold tabular-nums text-primary">{team.points}</span>
+                            <div className="flex items-center justify-center gap-0.5">
+                                <span className="text-sm font-bold tabular-nums text-primary">{team.pts}</span>
+                                {team.note && <span className="text-[10px] font-medium text-error-primary">*</span>}
+                            </div>
                         </div>
                     );
                 })}
+
+                {/* Footnotes for teams with point adjustments */}
+                {EKSTRAKLASA_STANDINGS.some((t) => t.note) && (
+                    <div className="border-t border-secondary px-3 py-2">
+                        {EKSTRAKLASA_STANDINGS.filter((t) => t.note).map((t) => (
+                            <p key={t.team} className="text-xs text-tertiary">
+                                * {getClubDisplayName(t.team)}: {t.note}
+                            </p>
+                        ))}
+                    </div>
+                )}
             </div>
         );
     }
 
     // ── WC: group-by-group display ────────────────────────────────────────────
+    const supabase = await createClient();
+    const { data: matches } = await supabase
+        .from("matches")
+        .select("home_team, away_team, home_score, away_score, status, group_name")
+        .eq("stage", "group")
+        .eq("competition_type", competitionType)
+        .order("group_name", { ascending: true });
+
+    if (!matches?.length) return <p className="text-sm text-tertiary">Brak danych.</p>;
+
     const wcGroups: Record<string, Record<string, TeamStats>> = {};
 
     for (const m of matches) {
