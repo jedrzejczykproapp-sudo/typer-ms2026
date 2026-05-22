@@ -96,7 +96,7 @@ function ScoreInput({
     disabled: boolean;
 }) {
     const btnClass =
-        "flex size-10 items-center justify-center rounded-xl bg-secondary text-2xl font-bold text-primary transition hover:bg-secondary_hover disabled:cursor-not-allowed disabled:opacity-40";
+        "flex size-10 items-center justify-center rounded-xl border border-secondary bg-secondary text-2xl font-bold text-primary transition hover:bg-secondary_hover disabled:cursor-not-allowed disabled:opacity-40";
 
     return (
         <div className="flex items-center gap-2">
