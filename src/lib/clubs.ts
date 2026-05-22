@@ -30,3 +30,21 @@ const EKSTRAKLASA_CRESTS: Record<string, string> = {
 export function getClubCrestUrl(teamName: string): string | null {
     return EKSTRAKLASA_CRESTS[teamName] ?? null;
 }
+
+// Display name overrides: DB name (used for crest lookup) → pretty name shown in UI
+const EKSTRAKLASA_DISPLAY_NAMES: Record<string, string> = {
+    "Bruk-Bet Termalica Nieciecza": "Bruk-Bet Termalica",
+    "Cracovia": "Cracovia Kraków",
+};
+
+export function getClubDisplayName(teamName: string): string {
+    return EKSTRAKLASA_DISPLAY_NAMES[teamName] ?? teamName;
+}
+
+// Returns [line1, line2] for two-line card display (split at first space).
+export function getClubNameLines(teamName: string): [string, string] {
+    const display = getClubDisplayName(teamName);
+    const spaceIdx = display.indexOf(" ");
+    if (spaceIdx === -1) return [display, ""];
+    return [display.slice(0, spaceIdx), display.slice(spaceIdx + 1)];
+}

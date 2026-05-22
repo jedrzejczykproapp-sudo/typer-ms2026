@@ -56,6 +56,17 @@ const EXPLICIT_MAP: Record<string, string> = {
     "bruk-bet termalica": "Bruk-Bet Termalica Nieciecza",
     "gks katowice": "GKS Katowice",
     "radomiak": "Radomiak Radom",
+    // Cracovia variants from odds APIs
+    "ks cracovia": "Cracovia",
+    "ks cracovia 1906": "Cracovia",
+    "cracovia 1906": "Cracovia",
+    "cracovia krakow": "Cracovia",
+    "cracovia krakow 1906": "Cracovia",
+    "mks cracovia": "Cracovia",
+    // Korona variants
+    "korona": "Korona Kielce",
+    "mks korona kielce": "Korona Kielce",
+    "korona kielce ksa": "Korona Kielce",
 };
 
 function resolveTeamName(apiName: string): string {

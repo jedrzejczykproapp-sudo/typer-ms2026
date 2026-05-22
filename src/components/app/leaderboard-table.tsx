@@ -18,7 +18,6 @@ export function LeaderboardTable({ entries, currentUserId }: { entries: Leaderbo
             {/* Column headers */}
             <div className="flex items-center gap-3 border-b border-secondary px-4 py-1.5">
                 <div className="w-6 shrink-0" />
-                <div className="size-8 shrink-0" />
                 <span className="min-w-0 flex-1 text-xs text-quaternary">Gracz</span>
                 <div className="flex shrink-0 items-center gap-3">
                     <span className="w-9 text-center text-xs text-quaternary">Dokł.</span>
