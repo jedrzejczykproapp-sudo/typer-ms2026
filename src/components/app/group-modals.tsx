@@ -132,24 +132,33 @@ function InviteScreen({ group, onClose }: { group: { id: string; name: string; i
             <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
                 <p className="text-sm text-tertiary">Zaproś znajomych do grupy</p>
                 <p className="text-xl font-bold text-primary">{group.name}</p>
-                <div className="mt-2 rounded-2xl border border-secondary bg-secondary px-10 py-5">
+                {/* Code box with inline copy button */}
+                <button
+                    type="button"
+                    onClick={() => clipboard.copy(inviteText)}
+                    className="mt-2 flex items-center gap-3 rounded-2xl border border-secondary bg-secondary px-8 py-5 transition hover:bg-secondary_hover"
+                >
                     <p className="font-mono text-4xl font-bold tracking-[0.3em] text-primary">
                         {group.invite_code}
                     </p>
-                    <p className="mt-1 text-xs text-tertiary">Kod zaproszenia</p>
-                </div>
+                    {clipboard.copied
+                        ? <Check className="size-5 shrink-0 text-success-primary" />
+                        : <Copy01 className="size-5 shrink-0 text-tertiary" />
+                    }
+                </button>
+                <p className="text-xs text-tertiary">Kod zaproszenia · kliknij aby skopiować</p>
             </div>
             <div className="flex flex-col gap-2">
-                {canShare && (
-                    <Button onClick={async () => { try { await navigator.share({ title: "Typerek", text: inviteText, url: inviteUrl }); } catch {} }} iconLeading={Share01} className="w-full">
-                        Udostępnij zaproszenie
-                    </Button>
-                )}
-                <Button color="secondary" onClick={() => clipboard.copy(inviteText)} iconLeading={clipboard.copied ? Check : Copy01} className="w-full">
-                    {clipboard.copied ? "Skopiowano!" : "Kopiuj zaproszenie"}
+                <Button
+                    onClick={async () => { try { await navigator.share({ title: "Typerek", text: inviteText, url: inviteUrl }); } catch {} }}
+                    iconLeading={Share01}
+                    className="w-full"
+                    size="lg"
+                >
+                    Zaproś znajomych
                 </Button>
-                <Button color="tertiary" onClick={goToGroup} className="w-full">
-                    Wejdź do grupy →
+                <Button color="secondary" onClick={goToGroup} className="w-full" size="lg">
+                    Przejdź do grupy
                 </Button>
             </div>
         </div>
