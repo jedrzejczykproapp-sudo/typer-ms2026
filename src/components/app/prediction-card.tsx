@@ -385,7 +385,7 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                             </span>
                             <TeamFlag teamName={match.home_team} competitionType={competitionType} />
                         </div>
-                        <div className="flex w-6 shrink-0 justify-center">
+                        <div className="flex w-8 shrink-0 justify-center">
                             <span className="text-xs font-medium text-tertiary">vs</span>
                         </div>
                         {/* Away — flag inner, name left-aligned */}
