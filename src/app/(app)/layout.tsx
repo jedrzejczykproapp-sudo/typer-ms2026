@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { Avatar } from "@/components/base/avatar/avatar";
 import { AccountSettingsMenu } from "@/components/app/account-settings-menu";
 import { Logo } from "@/components/app/logo";
 
@@ -16,12 +15,6 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         : { data: null };
 
     const displayName = profile?.display_name ?? "?";
-    const inits = displayName
-        .split(" ")
-        .map((w: string) => w[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase();
 
     return (
         <div className="min-h-dvh bg-secondary">
@@ -32,30 +25,15 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
                         <Logo height={17} className="text-primary" />
                     </Link>
 
-                    {/* Avatar + name + settings */}
-                    <div className="flex items-center gap-1.5">
-                        <Link
-                            href="/konto"
-                            className="flex items-center gap-2 rounded-lg px-2 py-1 transition hover:bg-secondary"
-                        >
-                            <Avatar
-                                initials={inits}
-                                src={profile?.avatar_url ?? null}
-                                size="xs"
-                            />
-                            <span className="max-w-[120px] truncate text-sm font-medium text-primary">
-                                {displayName}
-                            </span>
-                        </Link>
-                        {user && (
-                            <AccountSettingsMenu
-                                displayName={displayName}
-                                avatarUrl={profile?.avatar_url ?? null}
-                                email={user.email ?? ""}
-                                userId={user.id}
-                            />
-                        )}
-                    </div>
+                    {/* Avatar + name (opens account sheet) */}
+                    {user && (
+                        <AccountSettingsMenu
+                            displayName={displayName}
+                            avatarUrl={profile?.avatar_url ?? null}
+                            email={user.email ?? ""}
+                            userId={user.id}
+                        />
+                    )}
                 </div>
             </header>
 

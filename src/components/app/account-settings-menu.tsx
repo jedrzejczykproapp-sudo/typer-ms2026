@@ -1,10 +1,9 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
-import { Camera01, Moon01, Settings01, Sun, Trash01, X } from "@untitledui/icons";
+import { Camera01, DotsVertical, Moon01, Sun, Trash01, X } from "@untitledui/icons";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/base/buttons/button";
-import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Input } from "@/components/base/input/input";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { createClient } from "@/lib/supabase/client";
@@ -122,7 +121,7 @@ const AvatarCropPicker = forwardRef<AvatarCropHandle, { currentUrl: string | nul
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Sheet = "options" | "edit" | "confirmDelete";
+type Sheet = "profile" | "options" | "edit" | "confirmDelete";
 
 interface AccountSettingsMenuProps {
     displayName: string;
@@ -146,9 +145,16 @@ export function AccountSettingsMenu({ displayName, avatarUrl, email, userId }: A
 
     const inits = displayName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
-    function open() { setSheet("options"); setIsOpen(true); }
+    function open() { setSheet("profile"); setIsOpen(true); }
     function close() { setIsOpen(false); }
+    function openOptions() { setSheet("options"); }
     function openEdit() { setSaveError(null); setSheet("edit"); }
+
+    const backTarget: Partial<Record<Sheet, Sheet>> = {
+        options: "profile",
+        edit: "options",
+        confirmDelete: "options",
+    };
 
     async function handleSave(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
@@ -184,14 +190,25 @@ export function AccountSettingsMenu({ displayName, avatarUrl, email, userId }: A
     }
 
     const sheetTitles: Record<Sheet, string> = {
-        options: "Moje konto",
+        profile: "Moje konto",
+        options: "Opcje",
         edit: "Edytuj profil",
         confirmDelete: "Usuń konto",
     };
 
     return (
         <>
-            <ButtonUtility icon={Settings01} color="secondary" size="sm" tooltip="Ustawienia konta" onClick={open} />
+            {/* Trigger: avatar + name */}
+            <button
+                type="button"
+                onClick={open}
+                className="flex items-center gap-2 rounded-lg px-2 py-1 transition hover:bg-secondary"
+            >
+                <Avatar initials={inits} src={avatarUrl} size="xs" />
+                <span className="max-w-[120px] truncate text-sm font-medium text-primary">
+                    {displayName}
+                </span>
+            </button>
 
             {isOpen && (
                 <>
@@ -200,8 +217,8 @@ export function AccountSettingsMenu({ displayName, avatarUrl, email, userId }: A
                     <div className="fixed inset-x-0 bottom-0 z-50 mx-auto max-w-2xl rounded-t-2xl bg-primary shadow-xl ring-1 ring-secondary">
                         {/* Header */}
                         <div className="flex items-center gap-2 border-b border-secondary px-4 py-3">
-                            {sheet !== "options" && (
-                                <button onClick={() => setSheet("options")} className="flex items-center gap-1 rounded-lg p-1 text-tertiary hover:bg-secondary hover:text-secondary">
+                            {backTarget[sheet] !== undefined && (
+                                <button onClick={() => setSheet(backTarget[sheet]!)} className="flex items-center gap-1 rounded-lg p-1 text-tertiary hover:bg-secondary hover:text-secondary">
                                     <svg className="size-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                                     </svg>
@@ -215,19 +232,24 @@ export function AccountSettingsMenu({ displayName, avatarUrl, email, userId }: A
 
                         {/* Content */}
                         <div className="max-h-[70dvh] overflow-y-auto px-4 py-4 pb-8">
+                            {sheet === "profile" && (
+                                <div className="flex items-center gap-3 rounded-xl px-3 py-3">
+                                    <Avatar initials={inits} src={avatarUrl} size="md" />
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate font-semibold text-primary">{displayName}</p>
+                                        <p className="truncate text-xs text-tertiary">{email}</p>
+                                    </div>
+                                    <button
+                                        onClick={openOptions}
+                                        className="rounded-lg p-1.5 text-fg-quaternary transition hover:bg-secondary hover:text-fg-tertiary"
+                                    >
+                                        <DotsVertical className="size-5" />
+                                    </button>
+                                </div>
+                            )}
+
                             {sheet === "options" && (
                                 <div className="flex flex-col">
-                                    {/* Profile preview */}
-                                    <div className="flex items-center gap-3 px-3 py-3">
-                                        <Avatar initials={inits} src={avatarUrl} size="md" />
-                                        <div className="min-w-0">
-                                            <p className="truncate font-semibold text-primary">{displayName}</p>
-                                            <p className="truncate text-xs text-tertiary">{email}</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="my-1 border-t border-secondary" />
-
                                     {/* Edit profile */}
                                     <button onClick={openEdit} className="flex items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-secondary">
                                         <svg className="size-5 shrink-0 text-fg-tertiary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
