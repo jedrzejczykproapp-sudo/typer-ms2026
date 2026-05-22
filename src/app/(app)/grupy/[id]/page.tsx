@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getMatchesWithPredictions, getLeaderboard } from "@/actions/prediction-actions";
 import { getOdds } from "@/lib/odds";
@@ -98,15 +99,16 @@ export default async function GroupPage({
                 {/* Tabs */}
                 <div className="flex gap-1 rounded-xl bg-secondary p-1">
                     {TABS.map(({ key, label }) => (
-                        <a
+                        <Link
                             key={key}
                             href={`/grupy/${id}?tab=${key}`}
+                            scroll={false}
                             className={`flex-1 rounded-lg py-2 text-center text-sm font-semibold transition ${
                                 tab === key ? "bg-primary text-primary shadow-xs" : "text-tertiary hover:text-secondary"
                             }`}
                         >
                             {label}
-                        </a>
+                        </Link>
                     ))}
                 </div>
 

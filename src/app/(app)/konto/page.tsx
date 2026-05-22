@@ -12,8 +12,8 @@ import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-ic
 import type { Match } from "@/types/database";
 
 const TABS = [
-    { key: "statystyki", label: "Statystyki" },
     { key: "typowania", label: "Typowania" },
+    { key: "statystyki", label: "Statystyki" },
     { key: "grupy", label: "Grupy" },
 ] as const;
 
@@ -43,7 +43,7 @@ export default async function KontoPage({
 }: {
     searchParams: Promise<{ tab?: string; group?: string }>;
 }) {
-    const { tab = "statystyki", group: groupParam } = await searchParams;
+    const { tab = "typowania", group: groupParam } = await searchParams;
 
     const supabase = await createClient();
     const {
@@ -86,9 +86,10 @@ export default async function KontoPage({
             {/* Tabs */}
             <div className="flex gap-1 rounded-xl bg-secondary p-1">
                 {TABS.map(({ key, label }) => (
-                    <a
+                    <Link
                         key={key}
                         href={`/konto?tab=${key}`}
+                        scroll={false}
                         className={`relative flex-1 rounded-lg py-2 text-center text-sm font-semibold transition ${
                             tab === key ? "bg-primary text-primary shadow-xs" : "text-tertiary hover:text-secondary"
                         }`}
@@ -97,7 +98,7 @@ export default async function KontoPage({
                         {key === "typowania" && hasTodayMatches && (
                             <span className="absolute right-3 top-1/2 size-1.5 -translate-y-1/2 rounded-full bg-brand-solid animate-pulse" />
                         )}
-                    </a>
+                    </Link>
                 ))}
             </div>
 
