@@ -163,6 +163,15 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
     const [isLoadingPreds, setIsLoadingPreds] = useState(false);
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+    // Auto-save refs
+    const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const hasUserChangedRef = useRef(false);
+    const latestScores = useRef({ home: homeScore, away: awayScore });
+    const prevIsLockedRef = useRef(isLocked);
+
+    // Keep latest scores in sync (always reflects current render values)
+    latestScores.current = { home: homeScore, away: awayScore };
+
     useEffect(() => {
         if (prediction && !saved) {
             setLocalPrediction(prediction);
@@ -179,6 +188,39 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
         const id = setInterval(tick, 30_000);
         return () => clearInterval(id);
     }, [isLive, match.match_date]);
+
+    // ─── Auto-save helper ────────────────────────────────────────────────────
+    function scheduleAutoSave() {
+        if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = setTimeout(async () => {
+            const { home, away } = latestScores.current;
+            const result = await upsertPrediction(match.id, groupId, home, away);
+            if (!result?.error) {
+                setLocalPrediction({
+                    id: localPrediction?.id ?? "",
+                    user_id: localPrediction?.user_id ?? "",
+                    match_id: match.id,
+                    group_id: groupId,
+                    predicted_home: home,
+                    predicted_away: away,
+                    points: localPrediction?.points ?? null,
+                    created_at: localPrediction?.created_at ?? new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                });
+                setSaved(true);
+                setTimeout(() => setSaved(false), 2000);
+            }
+        }, 700);
+    }
+
+    // ─── Auto-save 0:0 when match transitions to locked ─────────────────────
+    useEffect(() => {
+        const wasLocked = prevIsLockedRef.current;
+        prevIsLockedRef.current = isLocked;
+        if (!wasLocked && isLocked && !localPrediction && !isTbd) {
+            upsertPrediction(match.id, groupId, 0, 0).catch(() => {/* silent */});
+        }
+    }, [isLocked]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const fetchMemberPredictions = useCallback(async () => {
         setIsLoadingPreds(true);
@@ -242,6 +284,11 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
     }, [isExpanded, isLive, fetchMemberPredictions]);
 
     function handleSave() {
+        // Cancel any pending auto-save before manual save
+        if (autoSaveTimerRef.current) {
+            clearTimeout(autoSaveTimerRef.current);
+            autoSaveTimerRef.current = null;
+        }
         startTransition(async () => {
             const result = await upsertPrediction(match.id, groupId, homeScore, awayScore);
             if (!result?.error) {
@@ -260,6 +307,18 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                 setTimeout(() => setSaved(false), 2000);
             }
         });
+    }
+
+    function handleHomeChange(v: number) {
+        hasUserChangedRef.current = true;
+        setHomeScore(v);
+        scheduleAutoSave();
+    }
+
+    function handleAwayChange(v: number) {
+        hasUserChangedRef.current = true;
+        setAwayScore(v);
+        scheduleAutoSave();
     }
 
     const hasPrediction = localPrediction !== undefined;
@@ -340,7 +399,7 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                             ) : isLive ? (
                                 <span className="text-4xl font-bold tabular-nums text-primary">{match.home_score ?? 0}</span>
                             ) : (
-                                <ScoreInput value={homeScore} onChange={setHomeScore} disabled={false} />
+                                <ScoreInput value={homeScore} onChange={handleHomeChange} disabled={false} />
                             )}
                         </div>
                         <span className={cx("shrink-0 text-2xl font-bold", isLive ? "text-error-primary" : "text-tertiary")}>:</span>
@@ -350,7 +409,7 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                             ) : isLive ? (
                                 <span className="text-4xl font-bold tabular-nums text-primary">{match.away_score ?? 0}</span>
                             ) : (
-                                <ScoreInput value={awayScore} onChange={setAwayScore} disabled={false} />
+                                <ScoreInput value={awayScore} onChange={handleAwayChange} disabled={false} />
                             )}
                         </div>
                     </div>
@@ -435,18 +494,26 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
 
             {/* Save button — upcoming only */}
             {!isLocked && !isTbd && (
-                <Button
-                    size="sm"
-                    color={saved || isSavedDisabled ? "secondary" : "primary"}
-                    isLoading={isPending}
-                    showTextWhileLoading
-                    onClick={handleSave}
-                    isDisabled={isSavedDisabled || isPending}
-                    iconLeading={saved || isSavedDisabled ? Check : undefined}
-                    className="w-full"
-                >
-                    {saved ? "Zapisano!" : isSavedDisabled ? "Zapisane" : "Zapisz typ"}
-                </Button>
+                isSavedDisabled ? (
+                    /* "Zapisane" — no border, no interaction */
+                    <div className="flex h-9 w-full items-center justify-center gap-1.5 text-sm font-medium text-tertiary">
+                        <Check className="size-4 shrink-0" />
+                        Zapisane
+                    </div>
+                ) : (
+                    <Button
+                        size="sm"
+                        color={saved ? "secondary" : "primary"}
+                        isLoading={isPending}
+                        showTextWhileLoading
+                        onClick={handleSave}
+                        isDisabled={isPending}
+                        iconLeading={saved ? Check : undefined}
+                        className="w-full"
+                    >
+                        {saved ? "Zapisano!" : "Zapisz typ"}
+                    </Button>
+                )
             )}
 
             {/* "Zobacz typy" button — live & finished */}
