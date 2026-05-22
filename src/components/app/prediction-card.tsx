@@ -494,7 +494,7 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                         { label: "X", value: odds.draw },
                         { label: "2", value: odds.away },
                     ].map(({ label, value }) => (
-                        <div key={label} className="flex flex-1 items-center justify-center gap-1 rounded-md bg-secondary py-1">
+                        <div key={label} className="flex flex-1 items-center justify-center gap-1 rounded-md border border-secondary py-1">
                             <span className="text-xs text-tertiary">{label}</span>
                             <span className="text-xs font-semibold tabular-nums text-primary">{value.toFixed(2)}</span>
                         </div>
