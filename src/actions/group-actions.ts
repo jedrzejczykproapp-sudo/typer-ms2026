@@ -177,6 +177,7 @@ export async function deleteGroup(groupId: string) {
     if (error) return { error: error.message };
 
     revalidatePath("/grupy");
+    revalidatePath("/konto");
     return { success: true };
 }
 
@@ -195,6 +196,7 @@ export async function leaveGroup(groupId: string) {
     if (error) return { error: error.message };
 
     revalidatePath("/grupy");
+    revalidatePath("/konto");
     return { success: true };
 }
 

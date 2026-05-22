@@ -334,7 +334,8 @@ export function GroupSettingsMenu({
         if (result?.error) {
             setActionError(result.error);
         } else {
-            router.push("/grupy");
+            router.push("/konto?tab=grupy");
+            router.refresh();
         }
     }
 
@@ -346,7 +347,8 @@ export function GroupSettingsMenu({
         if (result?.error) {
             setActionError(result.error);
         } else {
-            router.push("/grupy");
+            router.push("/konto?tab=grupy");
+            router.refresh();
         }
     }
 
