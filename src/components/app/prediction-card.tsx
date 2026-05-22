@@ -88,30 +88,35 @@ function ScoreInput({
     value,
     onChange,
     disabled,
+    mirrored = false,
 }: {
     value: number;
     onChange: (v: number) => void;
     disabled: boolean;
+    mirrored?: boolean;
 }) {
+    const btnClass =
+        "flex size-11 items-center justify-center rounded-xl bg-secondary text-2xl font-bold text-primary transition hover:bg-secondary_hover disabled:cursor-not-allowed disabled:opacity-40";
+
+    const minus = (
+        <button type="button" disabled={disabled || value <= 0}
+            onClick={() => onChange(Math.max(0, value - 1))} className={btnClass}>
+            −
+        </button>
+    );
+    const plus = (
+        <button type="button" disabled={disabled}
+            onClick={() => onChange(Math.min(20, value + 1))} className={btnClass}>
+            +
+        </button>
+    );
+    const number = (
+        <span className="w-10 text-center text-3xl font-bold tabular-nums text-primary">{value}</span>
+    );
+
     return (
         <div className="flex items-center gap-2">
-            <button
-                type="button"
-                disabled={disabled || value <= 0}
-                onClick={() => onChange(Math.max(0, value - 1))}
-                className="flex size-11 items-center justify-center rounded-xl bg-secondary text-2xl font-bold text-primary transition hover:bg-secondary_hover disabled:cursor-not-allowed disabled:opacity-40"
-            >
-                −
-            </button>
-            <span className="w-10 text-center text-3xl font-bold tabular-nums text-primary">{value}</span>
-            <button
-                type="button"
-                disabled={disabled}
-                onClick={() => onChange(Math.min(20, value + 1))}
-                className="flex size-11 items-center justify-center rounded-xl bg-secondary text-2xl font-bold text-primary transition hover:bg-secondary_hover disabled:cursor-not-allowed disabled:opacity-40"
-            >
-                +
-            </button>
+            {mirrored ? <>{plus}{number}{minus}</> : <>{minus}{number}{plus}</>}
         </div>
     );
 }
@@ -371,7 +376,7 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                                 <span className="text-2xl font-bold text-tertiary">:</span>
                             </div>
                             <div className="flex flex-1 justify-center">
-                                <ScoreInput value={awayScore} onChange={setAwayScore} disabled={false} />
+                                <ScoreInput value={awayScore} onChange={setAwayScore} disabled={false} mirrored />
                             </div>
                         </div>
                     )}
