@@ -376,7 +376,7 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                                 <span className="text-2xl font-bold text-tertiary">:</span>
                             </div>
                             <div className="flex flex-1 justify-center">
-                                <ScoreInput value={awayScore} onChange={setAwayScore} disabled={false} mirrored />
+                                <ScoreInput value={awayScore} onChange={setAwayScore} disabled={false} />
                             </div>
                         </div>
                     )}
