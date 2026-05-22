@@ -95,7 +95,10 @@ function InviteScreen({
     const clipboard = useClipboard();
     const canShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
 
-    const inviteText = `Dołącz do mojej grupy „${group.name}" na typerek.com!\nKod zaproszenia: ${group.invite_code}`;
+    const inviteUrl = typeof window !== "undefined"
+        ? `${window.location.origin}/dolacz?kod=${group.invite_code}`
+        : `/dolacz?kod=${group.invite_code}`;
+    const inviteText = `Dołącz do mojej grupy „${group.name}" na Typerek!\n${inviteUrl}`;
 
     function handleCopy() {
         clipboard.copy(inviteText);
@@ -103,7 +106,7 @@ function InviteScreen({
 
     async function handleShare() {
         try {
-            await navigator.share({ title: "typerek", text: inviteText });
+            await navigator.share({ title: "Typerek", text: inviteText, url: inviteUrl });
         } catch {
             // user dismissed share sheet — ignore
         }

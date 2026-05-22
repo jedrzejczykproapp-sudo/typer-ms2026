@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
-import { Camera01, Check, ChevronLeft, Copy01, DotsVertical, Edit01, LogOut01, Trash01, Users01, X } from "@untitledui/icons";
+import { Camera01, Check, ChevronLeft, Copy01, DotsVertical, Edit01, LogOut01, Share01, Trash01, Users01, X } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Input } from "@/components/base/input/input";
@@ -388,6 +388,24 @@ export function GroupSettingsMenu({
                         <div className="max-h-[70dvh] overflow-y-auto px-4 py-4 pb-8">
                             {sheet === "options" && (
                                 <div className="flex flex-col">
+                                    {/* Share */}
+                                    <button
+                                        onClick={async () => {
+                                            const url = `${window.location.origin}/dolacz?kod=${inviteCode}`;
+                                            const text = `Dołącz do mojej grupy „${groupName}" na Typerek!\n${url}`;
+                                            if (typeof navigator.share === "function") {
+                                                try { await navigator.share({ title: "Typerek", text, url }); } catch { /* dismissed */ }
+                                            } else {
+                                                clipboard.copy(url);
+                                            }
+                                        }}
+                                        className="flex items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-secondary"
+                                    >
+                                        <Share01 className="size-5 shrink-0 text-fg-tertiary" />
+                                        <p className="text-sm font-medium text-primary">Udostępnij grupę</p>
+                                    </button>
+
+                                    {/* Copy invite code */}
                                     <button
                                         onClick={() => clipboard.copy(inviteCode)}
                                         className="flex items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-secondary"

@@ -14,7 +14,8 @@ export async function signIn(formData: FormData) {
 
     if (error) return { error: error.message };
 
-    redirect("/konto");
+    const redirectTo = formData.get("redirect_to") as string | null;
+    redirect(redirectTo?.startsWith("/") ? redirectTo : "/konto");
 }
 
 export async function signUp(formData: FormData) {
@@ -32,7 +33,8 @@ export async function signUp(formData: FormData) {
 
     if (error) return { error: error.message };
 
-    redirect("/konto");
+    const redirectTo = formData.get("redirect_to") as string | null;
+    redirect(redirectTo?.startsWith("/") ? redirectTo : "/konto");
 }
 
 export async function signOut() {

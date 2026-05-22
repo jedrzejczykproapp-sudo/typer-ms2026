@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/base/buttons/button";
 import { Input } from "@/components/base/input/input";
 import { signUp } from "@/actions/auth-actions";
@@ -9,6 +10,9 @@ import { Logo } from "@/components/app/logo";
 export default function RejestracjaPage() {
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const searchParams = useSearchParams();
+    const kod = searchParams.get("kod");
+    const redirectTo = kod ? `/dolacz?kod=${encodeURIComponent(kod)}` : null;
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
@@ -36,10 +40,15 @@ export default function RejestracjaPage() {
         <div className="flex flex-col items-center gap-8">
             <div className="flex flex-col items-center gap-4 text-center">
                 <Logo height={24} className="text-primary" />
-                <p className="text-sm text-tertiary">Dołącz do Typera MŚ 2026</p>
+                <p className="text-sm text-tertiary">
+                    {kod ? "Zarejestruj się, aby dołączyć do grupy" : "Dołącz do Typera MŚ 2026"}
+                </p>
             </div>
 
             <form onSubmit={handleSubmit} className="flex w-full flex-col gap-4">
+                {redirectTo && (
+                    <input type="hidden" name="redirect_to" value={redirectTo} />
+                )}
                 <Input
                     name="display_name"
                     label="Nazwa gracza"
@@ -83,7 +92,11 @@ export default function RejestracjaPage() {
 
             <p className="text-sm text-tertiary">
                 Masz już konto?{" "}
-                <Button href="/logowanie" color="link-color" size="sm">
+                <Button
+                    href={kod ? `/logowanie?kod=${encodeURIComponent(kod)}` : "/logowanie"}
+                    color="link-color"
+                    size="sm"
+                >
                     Zaloguj się
                 </Button>
             </p>

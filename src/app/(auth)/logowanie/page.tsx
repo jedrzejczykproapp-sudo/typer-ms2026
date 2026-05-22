@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/base/buttons/button";
 import { Input } from "@/components/base/input/input";
 import { signIn } from "@/actions/auth-actions";
@@ -9,6 +10,9 @@ import { Logo } from "@/components/app/logo";
 export default function LogowaniePage() {
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const searchParams = useSearchParams();
+    const kod = searchParams.get("kod");
+    const redirectTo = kod ? `/dolacz?kod=${encodeURIComponent(kod)}` : null;
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
@@ -25,10 +29,15 @@ export default function LogowaniePage() {
         <div className="flex flex-col items-center gap-8">
             <div className="flex flex-col items-center gap-4 text-center">
                 <Logo height={24} className="text-primary" />
-                <p className="text-sm text-tertiary">Zaloguj się do swojego konta</p>
+                <p className="text-sm text-tertiary">
+                    {kod ? "Zaloguj się, aby dołączyć do grupy" : "Zaloguj się do swojego konta"}
+                </p>
             </div>
 
             <form onSubmit={handleSubmit} className="flex w-full flex-col gap-4">
+                {redirectTo && (
+                    <input type="hidden" name="redirect_to" value={redirectTo} />
+                )}
                 <Input
                     name="email"
                     type="email"
@@ -57,7 +66,11 @@ export default function LogowaniePage() {
 
             <p className="text-sm text-tertiary">
                 Nie masz konta?{" "}
-                <Button href="/rejestracja" color="link-color" size="sm">
+                <Button
+                    href={kod ? `/rejestracja?kod=${encodeURIComponent(kod)}` : "/rejestracja"}
+                    color="link-color"
+                    size="sm"
+                >
                     Zarejestruj się
                 </Button>
             </p>

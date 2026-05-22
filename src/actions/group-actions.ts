@@ -92,6 +92,35 @@ export async function getUserGroups() {
     return data?.map((m) => m.groups).filter(Boolean) ?? [];
 }
 
+/** Join a group by invite code (used by the /dolacz deep-link page). */
+export async function joinGroupByCode(code: string) {
+    const supabase = await createClient();
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return { error: "not_authenticated" as const };
+
+    const { data: group } = await supabase
+        .from("groups")
+        .select("id, name")
+        .eq("invite_code", code.trim().toUpperCase())
+        .single();
+
+    if (!group) return { error: "invalid_code" as const };
+
+    // Insert member; ignore "already a member" duplicate
+    const { error: memberError } = await supabase
+        .from("group_members")
+        .insert({ group_id: group.id, user_id: user.id });
+
+    if (memberError && memberError.code !== "23505") {
+        return { error: "db_error" as const };
+    }
+
+    return { success: true as const, groupId: group.id as string };
+}
+
 export async function renameGroup(groupId: string, name: string, avatarUrl?: string | null) {
     const supabase = await createClient();
     const {
