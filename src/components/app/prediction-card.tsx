@@ -7,6 +7,7 @@ import { Avatar } from "@/components/base/avatar/avatar";
 import { upsertPrediction } from "@/actions/prediction-actions";
 import { getFlagUrl, getTeamNamePl } from "@/lib/flags";
 import { getClubCrestUrl, getClubDisplayName } from "@/lib/clubs";
+import { getWcVenue } from "@/lib/wc2026-venues";
 import { createClient } from "@/lib/supabase/client";
 import type { Match, Prediction } from "@/types/database";
 import type { MatchOdds } from "@/lib/odds";
@@ -318,11 +319,18 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
             ) : (
                 <>
                     {/* Venue */}
-                    {match.venue && (
-                        <p className="text-center text-[11px] font-medium uppercase tracking-wider text-quaternary">
-                            {match.venue}
-                        </p>
-                    )}
+                    {(() => {
+                        const venue =
+                            match.venue ??
+                            (competitionType !== "ekstraklasa_2526"
+                                ? getWcVenue(match.home_team, match.away_team)
+                                : null);
+                        return venue ? (
+                            <p className="text-center text-[11px] font-medium uppercase tracking-wider text-quaternary">
+                                {venue}
+                            </p>
+                        ) : null;
+                    })()}
 
                     {/* Wiersz 1: wynik — [:] wyrównany do cyfr */}
                     <div className="flex items-center gap-2">
