@@ -123,12 +123,18 @@ export async function syncMatchData(opts: {
     cachedFixtureId: number | null;
 }): Promise<SyncResult | null> {
     const key = process.env.FOOTBALL_API_KEY;
-    if (!key) return null;
+    if (!key) {
+        console.error("[api-football] FOOTBALL_API_KEY is not set");
+        return null;
+    }
 
     const { competitionType, matchDate, homeTeam, awayTeam, cachedFixtureId } = opts;
     const leagueId = LEAGUE_IDS[competitionType];
     const season = SEASONS[competitionType];
-    if (!leagueId || !season) return null;
+    if (!leagueId || !season) {
+        console.error("[api-football] unknown competitionType:", competitionType, "known:", Object.keys(LEAGUE_IDS));
+        return null;
+    }
 
     const h = { "x-apisports-key": key };
     let fixtureId = cachedFixtureId;
@@ -137,12 +143,15 @@ export async function syncMatchData(opts: {
     // ── Step 1: find fixture if not cached ────────────────────────────────────
     if (!fixtureId) {
         const date = matchDate.slice(0, 10);
-        const res = await fetch(
-            `${BASE}/fixtures?league=${leagueId}&season=${season}&from=${date}&to=${date}`,
-            { headers: h },
-        );
-        if (!res.ok) return null;
+        const url = `${BASE}/fixtures?league=${leagueId}&season=${season}&from=${date}&to=${date}`;
+        console.log("[api-football] fixture lookup:", url);
+        const res = await fetch(url, { headers: h });
+        if (!res.ok) {
+            console.error("[api-football] fixture lookup failed:", res.status, res.statusText);
+            return null;
+        }
         const data = await res.json();
+        console.log("[api-football] fixtures found:", data.response?.length ?? 0, "errors:", data.errors);
         const fixtures: ApiFixtureItem[] = data.response ?? [];
 
         const found = fixtures.find((f) => {
@@ -150,6 +159,7 @@ export async function syncMatchData(opts: {
             const an = norm(f.teams.away.name);
             const ourH = norm(homeTeam);
             const ourA = norm(awayTeam);
+            console.log("[api-football] comparing:", { hn, an, ourH, ourA });
             // exact match or first-word match
             return (
                 (hn === ourH || hn.includes(ourH.split(" ")[0])) &&
@@ -157,7 +167,10 @@ export async function syncMatchData(opts: {
             );
         });
 
-        if (!found) return null;
+        if (!found) {
+            console.error("[api-football] fixture not found for:", homeTeam, "vs", awayTeam, "on", date);
+            return null;
+        }
         fixtureId = found.fixture.id;
         homeTeamApiId = found.teams.home.id;
     }
