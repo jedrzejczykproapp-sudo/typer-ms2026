@@ -54,6 +54,35 @@ export interface Prediction {
     updated_at: string;
 }
 
+export type MatchEventType = "goal" | "own_goal" | "penalty" | "yellow_card" | "red_card" | "yellow_red_card";
+
+export interface MatchEvent {
+    id: string;
+    match_id: string;
+    minute: number;
+    extra_minute: number | null;
+    event_type: MatchEventType;
+    player_name: string | null;
+    team: "home" | "away";
+    detail: string | null;
+    created_at: string;
+}
+
+export interface MatchStats {
+    match_id: string;
+    home_possession: number | null;
+    away_possession: number | null;
+    home_shots: number | null;
+    away_shots: number | null;
+    home_shots_on_target: number | null;
+    away_shots_on_target: number | null;
+    home_corners: number | null;
+    away_corners: number | null;
+    home_fouls: number | null;
+    away_fouls: number | null;
+    updated_at: string;
+}
+
 export interface LeaderboardEntry {
     user_id: string;
     display_name: string | null;

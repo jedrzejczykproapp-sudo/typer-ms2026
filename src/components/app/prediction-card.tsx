@@ -9,6 +9,7 @@ import { getFlagUrl, getTeamNamePl } from "@/lib/flags";
 import { getClubCrestUrl, getClubDisplayName } from "@/lib/clubs";
 import { getWcVenue } from "@/lib/wc2026-venues";
 import { createClient } from "@/lib/supabase/client";
+import { MatchDetailsPanel } from "@/components/app/match-details-panel";
 import type { Match, Prediction } from "@/types/database";
 import type { MatchOdds } from "@/lib/odds";
 import { cx } from "@/utils/cx";
@@ -161,8 +162,8 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
         (isDbLive || isClientStarted) ? calcLiveState(match.match_date) : null,
     );
 
-    // "Zobacz typy" expansion
-    const [isExpanded, setIsExpanded] = useState(false);
+    // Panel expansion: null | 'typy' | 'szczegoly'
+    const [panel, setPanel] = useState<"typy" | "szczegoly" | null>(null);
     const [memberPreds, setMemberPreds] = useState<MemberPrediction[]>([]);
     const [isLoadingPreds, setIsLoadingPreds] = useState(false);
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -258,7 +259,7 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
 
     // Fetch predictions when expanded; poll every 30s during live
     useEffect(() => {
-        if (!isExpanded) {
+        if (panel !== "typy") {
             if (pollRef.current) {
                 clearInterval(pollRef.current);
                 pollRef.current = null;
@@ -278,7 +279,7 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                 pollRef.current = null;
             }
         };
-    }, [isExpanded, isLive, fetchMemberPredictions]);
+    }, [panel, isLive, fetchMemberPredictions]);
 
     function handleSave() {
         // Cancel any pending auto-save before manual save
@@ -374,24 +375,24 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
         >
             {/* Header */}
             <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-tertiary">
-                        {groupName
-                            ? groupName
-                            : match.group_name
-                              ? `Grupa ${match.group_name} · Kolejka ${match.matchday}`
-                              : competitionType === "ekstraklasa_2526" && match.matchday
-                                ? `Kolejka ${match.matchday}`
-                                : stageLabels[match.stage]}
-                    </span>
+                <span className="text-xs font-medium text-tertiary">
+                    {groupName
+                        ? groupName
+                        : match.group_name
+                          ? `Grupa ${match.group_name} · Kolejka ${match.matchday}`
+                          : competitionType === "ekstraklasa_2526" && match.matchday
+                            ? `Kolejka ${match.matchday}`
+                            : stageLabels[match.stage]}
+                </span>
+                <div className="flex shrink-0 items-center gap-1.5">
                     {isLive && (
-                        <span className="flex shrink-0 items-center gap-1 rounded-full bg-error-primary px-1.5 py-0.5 text-xs font-bold text-error-primary">
-                            <span className="size-1.5 animate-pulse rounded-full bg-error-solid" />
+                        <span className="flex items-center gap-1 rounded-full bg-success-primary px-1.5 py-0.5 text-xs font-bold text-success-primary">
+                            <span className="size-1.5 animate-pulse rounded-full bg-success-solid" />
                             Trwa
                         </span>
                     )}
+                    <span className="text-xs text-tertiary">{formatMatchDate(match.match_date)}</span>
                 </div>
-                <span className="shrink-0 text-xs text-tertiary">{formatMatchDate(match.match_date)}</span>
             </div>
 
             {isTbd ? (
@@ -426,7 +427,7 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                                 <ScoreInput value={homeScore} onChange={handleHomeChange} disabled={false} />
                             )}
                         </div>
-                        <span className={cx("shrink-0 text-2xl font-bold", isLive ? "text-error-primary" : "text-tertiary")}>:</span>
+                        <span className={cx("shrink-0 text-2xl font-bold", isLive ? "text-success-primary" : "text-tertiary")}>:</span>
                         <div className="flex flex-1 justify-center">
                             {isFinished ? (
                                 <span className="text-4xl font-bold tabular-nums text-primary">{match.away_score}</span>
@@ -468,11 +469,11 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                         <div className="flex flex-col gap-1.5">
                             <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
                                 <div
-                                    className="h-full rounded-full bg-error-solid transition-all duration-1000"
+                                    className="h-full rounded-full bg-success-solid transition-all duration-1000"
                                     style={{ width: `${liveState.progress}%` }}
                                 />
                             </div>
-                            <p className="text-center text-xs font-medium text-error-primary">
+                            <p className="text-center text-xs font-medium text-white">
                                 {liveState.isHalftime
                                     ? "Przerwa"
                                     : liveState.half === 1
@@ -546,21 +547,44 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                 )
             )}
 
-            {/* Pokaż wyniki — live & finished */}
+            {/* Przyciski akcji — live & finished */}
             {isLocked && !isTbd && (
                 <div className="flex flex-col gap-2">
-                    <Button
-                        color="secondary"
-                        size="sm"
-                        iconTrailing={isExpanded ? ChevronUp : ChevronDown}
-                        onClick={() => setIsExpanded((v) => !v)}
-                        className="w-full"
-                    >
-                        {isExpanded ? "Ukryj wyniki" : "Pokaż wyniki"}
-                    </Button>
+                    {/* Two action buttons side by side */}
+                    <div className="flex gap-2">
+                        <Button
+                            color="secondary"
+                            size="sm"
+                            iconTrailing={panel === "szczegoly" ? ChevronUp : ChevronDown}
+                            onClick={() => setPanel(panel === "szczegoly" ? null : "szczegoly")}
+                            className="flex-1"
+                        >
+                            Pokaż szczegóły
+                        </Button>
+                        <Button
+                            color="secondary"
+                            size="sm"
+                            iconTrailing={panel === "typy" ? ChevronUp : ChevronDown}
+                            onClick={() => setPanel(panel === "typy" ? null : "typy")}
+                            className="flex-1"
+                        >
+                            Pokaż typy
+                        </Button>
+                    </div>
 
-                    {/* Expanded predictions list */}
-                    {isExpanded && (
+                    {/* Panel: szczegóły — events + stats */}
+                    {panel === "szczegoly" && (
+                        <MatchDetailsPanel
+                            matchId={match.id}
+                            homeTeam={match.home_team}
+                            awayTeam={match.away_team}
+                            competitionType={competitionType}
+                            isLive={isLive}
+                        />
+                    )}
+
+                    {/* Panel: typy — member predictions */}
+                    {panel === "typy" && (
                         <div className="flex flex-col gap-1 rounded-xl border border-secondary bg-secondary/40 p-2">
                             {isLoadingPreds ? (
                                 <div className="flex flex-col gap-2 px-1 py-2">
