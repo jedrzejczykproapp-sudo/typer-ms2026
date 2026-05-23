@@ -10,5 +10,7 @@ export async function GET() {
     const res = await fetch(url, { cache: "no-store" });
     const data = await res.json();
 
-    return NextResponse.json({ sample: Array.isArray(data) ? data.slice(0, 3) : data });
+    // Return raw first item so we can see exact field names
+    const first = Array.isArray(data) ? data[0] : data;
+    return NextResponse.json({ isArray: Array.isArray(data), count: Array.isArray(data) ? data.length : null, first });
 }
