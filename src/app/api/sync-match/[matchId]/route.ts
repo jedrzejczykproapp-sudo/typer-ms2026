@@ -50,6 +50,7 @@ export async function POST(
     }
 
     // ── 3. Fetch from API-Football ─────────────────────────────────────────────
+    console.log("[sync] fetching", { competitionType, matchDate: match.match_date, homeTeam: match.home_team, awayTeam: match.away_team });
     const result = await syncMatchData({
         competitionType,
         matchDate: match.match_date,
@@ -59,8 +60,10 @@ export async function POST(
     });
 
     if (!result) {
-        return NextResponse.json({ error: "api-football sync failed" }, { status: 502 });
+        console.error("[sync] syncMatchData returned null — check FOOTBALL_API_KEY, leagueId, season, team names");
+        return NextResponse.json({ error: "api-football sync failed", competitionType, homeTeam: match.home_team, awayTeam: match.away_team }, { status: 502 });
     }
+    console.log("[sync] got result", { fixtureId: result.fixtureId, events: result.events.length, stats: !!result.stats, score: `${result.homeScore}:${result.awayScore}`, status: result.matchStatus });
 
     // ── 4. Update match scores, status and cache fixture ID ───────────────────
     {
@@ -80,18 +83,21 @@ export async function POST(
 
     // ── 5. Write events (replace all for this match) ──────────────────────────
     if (result.events.length > 0) {
-        await admin.from("match_events").delete().eq("match_id", matchId);
-        await admin.from("match_events").insert(
+        const { error: delErr } = await admin.from("match_events").delete().eq("match_id", matchId);
+        if (delErr) console.error("[sync] delete events error", delErr);
+        const { error: insErr } = await admin.from("match_events").insert(
             result.events.map((e) => ({ ...e, match_id: matchId })),
         );
+        if (insErr) console.error("[sync] insert events error", insErr);
     }
 
     // ── 6. Upsert stats ────────────────────────────────────────────────────────
     if (result.stats) {
-        await admin.from("match_stats").upsert(
+        const { error: stErr } = await admin.from("match_stats").upsert(
             { ...result.stats, match_id: matchId, updated_at: new Date().toISOString() },
             { onConflict: "match_id" },
         );
+        if (stErr) console.error("[sync] upsert stats error", stErr);
     }
 
     return NextResponse.json({ ok: true, events: result.events.length, stats: !!result.stats });

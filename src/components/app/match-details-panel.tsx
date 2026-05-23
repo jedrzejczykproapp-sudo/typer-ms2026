@@ -115,12 +115,17 @@ export function MatchDetailsPanel({ matchId, homeTeam, awayTeam, competitionType
         }
 
         async function syncThenLoad() {
-            // Sync first, then read updated data from DB
-            await fetch(`/api/sync-match/${matchId}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ competitionType: competitionType ?? "" }),
-            }).catch(() => null);
+            try {
+                const res = await fetch(`/api/sync-match/${matchId}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ competitionType: competitionType ?? "" }),
+                });
+                const json = await res.json().catch(() => null);
+                console.log("[sync-match] response", json);
+            } catch (e) {
+                console.error("[sync-match] fetch error", e);
+            }
             if (!cancelled) await load();
         }
 
