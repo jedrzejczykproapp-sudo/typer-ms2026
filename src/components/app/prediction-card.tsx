@@ -43,32 +43,30 @@ function formatMatchDate(dateStr: string) {
     }).format(date);
 }
 
-function calcLiveState(matchDate: string): { minute: number; isHalftime: boolean; progress: number } {
+function calcLiveState(matchDate: string): { minute: number; half: 1 | 2 | null; isHalftime: boolean; progress: number } {
     const start = new Date(matchDate).getTime();
     const elapsed = (Date.now() - start) / 60000; // elapsed minutes
 
-    let minute: number;
-    let isHalftime: boolean;
-    let progress: number;
-
     if (elapsed <= 45) {
-        minute = Math.max(1, Math.floor(elapsed));
-        isHalftime = false;
-        progress = (elapsed / 90) * 100;
-    } else if (elapsed <= 60) {
-        // Approximate halftime window (~15 min break)
-        minute = 45;
-        isHalftime = true;
-        progress = 50;
-    } else {
-        // Second half (subtract ~15 min halftime)
-        const secondHalfMin = elapsed - 15;
-        minute = Math.min(Math.floor(secondHalfMin), 90);
-        isHalftime = false;
-        progress = Math.min((secondHalfMin / 90) * 100, 100);
+        return {
+            minute: Math.max(1, Math.floor(elapsed)),
+            half: 1,
+            isHalftime: false,
+            progress: (elapsed / 90) * 100,
+        };
     }
-
-    return { minute, isHalftime, progress };
+    if (elapsed <= 60) {
+        // Approximate halftime window (~15 min break)
+        return { minute: 45, half: null, isHalftime: true, progress: 50 };
+    }
+    // Second half (subtract ~15 min halftime)
+    const secondHalfMin = elapsed - 15;
+    return {
+        minute: Math.min(Math.floor(secondHalfMin), 90),
+        half: 2,
+        isHalftime: false,
+        progress: Math.min((secondHalfMin / 90) * 100, 100),
+    };
 }
 
 function calcProvisionalPoints(ph: number, pa: number, ah: number, aa: number): number {
@@ -141,9 +139,8 @@ function TeamFlag({ teamName, competitionType, size = "md" }: { teamName: string
 }
 
 export function PredictionCard({ match, groupId, prediction, odds, competitionType, groupName }: PredictionCardProps) {
-    const isLocked = match.status !== "upcoming";
     const isFinished = match.status === "finished";
-    const isLive = match.status === "live";
+    const isDbLive = match.status === "live";
     const isTbd = match.home_team === "TBD";
 
     const [homeScore, setHomeScore] = useState(prediction?.predicted_home ?? 0);
@@ -152,9 +149,16 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
     const [saved, setSaved] = useState(false);
     const [isPending, startTransition] = useTransition();
 
-    // Live state
+    // Client-side time detection: lock predictions once match_date passes
+    const [isClientStarted, setIsClientStarted] = useState(() =>
+        !isFinished && Date.now() >= new Date(match.match_date).getTime(),
+    );
+    const isLive = isDbLive || isClientStarted;
+    const isLocked = isFinished || isLive;
+
+    // Live state (minute + half + progress)
     const [liveState, setLiveState] = useState(() =>
-        isLive ? calcLiveState(match.match_date) : null,
+        (isDbLive || isClientStarted) ? calcLiveState(match.match_date) : null,
     );
 
     // "Zobacz typy" expansion
@@ -180,14 +184,21 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
         }
     }, [prediction?.updated_at]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Update live minute/progress every 30s
+    // Update live minute/progress every 30s; also detect when match time passes
     useEffect(() => {
-        if (!isLive) return;
-        const tick = () => setLiveState(calcLiveState(match.match_date));
+        if (isFinished) return;
+        const startMs = new Date(match.match_date).getTime();
+        const tick = () => {
+            const started = Date.now() >= startMs;
+            setIsClientStarted(started);
+            if (started || isDbLive) {
+                setLiveState(calcLiveState(match.match_date));
+            }
+        };
         tick();
         const id = setInterval(tick, 30_000);
         return () => clearInterval(id);
-    }, [isLive, match.match_date]);
+    }, [isDbLive, isFinished, match.match_date]);
 
     // ─── Auto-save helper ────────────────────────────────────────────────────
     function scheduleAutoSave() {
@@ -376,7 +387,7 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                     {isLive && (
                         <span className="flex shrink-0 items-center gap-1 rounded-full bg-error-primary px-1.5 py-0.5 text-xs font-bold text-error-primary">
                             <span className="size-1.5 animate-pulse rounded-full bg-error-solid" />
-                            NA ŻYWO
+                            Trwa
                         </span>
                     )}
                 </div>
@@ -406,8 +417,11 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                         <div className="flex flex-1 justify-center">
                             {isFinished ? (
                                 <span className="text-4xl font-bold tabular-nums text-primary">{match.home_score}</span>
-                            ) : isLive ? (
+                            ) : isDbLive ? (
                                 <span className="text-4xl font-bold tabular-nums text-primary">{match.home_score ?? 0}</span>
+                            ) : isLive ? (
+                                /* match started client-side but no DB score yet — show locked prediction */
+                                <span className="text-4xl font-bold tabular-nums text-tertiary">{homeScore}</span>
                             ) : (
                                 <ScoreInput value={homeScore} onChange={handleHomeChange} disabled={false} />
                             )}
@@ -416,8 +430,10 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                         <div className="flex flex-1 justify-center">
                             {isFinished ? (
                                 <span className="text-4xl font-bold tabular-nums text-primary">{match.away_score}</span>
-                            ) : isLive ? (
+                            ) : isDbLive ? (
                                 <span className="text-4xl font-bold tabular-nums text-primary">{match.away_score ?? 0}</span>
+                            ) : isLive ? (
+                                <span className="text-4xl font-bold tabular-nums text-tertiary">{awayScore}</span>
                             ) : (
                                 <ScoreInput value={awayScore} onChange={handleAwayChange} disabled={false} />
                             )}
@@ -457,7 +473,11 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                                 />
                             </div>
                             <p className="text-center text-xs font-medium text-error-primary">
-                                {liveState.isHalftime ? "Przerwa" : `${liveState.minute}'`}
+                                {liveState.isHalftime
+                                    ? "Przerwa"
+                                    : liveState.half === 1
+                                      ? `1. połowa · ${liveState.minute}'`
+                                      : `2. połowa · ${liveState.minute}'`}
                             </p>
                         </div>
                     )}
