@@ -350,20 +350,23 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
 
     const isSavedDisabled = hasPrediction && !hasChanged && !saved;
 
+    // Compute points for a member — DB value preferred, fallback to provisional from score
+    const computePoints = (p: MemberPrediction): number | null => {
+        if (isFinished) {
+            if (p.points !== null) return p.points;
+            if (match.home_score !== null && match.away_score !== null)
+                return calcProvisionalPoints(p.predicted_home, p.predicted_away, match.home_score, match.away_score);
+            return null;
+        }
+        if (isLive && match.home_score !== null && match.away_score !== null)
+            return calcProvisionalPoints(p.predicted_home, p.predicted_away, match.home_score, match.away_score);
+        return null;
+    };
+
     // Sorted member predictions for display
-    const sortedMemberPreds = [...memberPreds].sort((a, b) => {
-        const getDisplayPoints = (p: MemberPrediction) => {
-            if (isFinished) return p.points ?? -1;
-            if (isLive && match.home_score !== null && match.away_score !== null) {
-                return calcProvisionalPoints(
-                    p.predicted_home, p.predicted_away,
-                    match.home_score!, match.away_score!,
-                );
-            }
-            return -1;
-        };
-        return getDisplayPoints(b) - getDisplayPoints(a);
-    });
+    const sortedMemberPreds = [...memberPreds].sort((a, b) =>
+        (computePoints(b) ?? -1) - (computePoints(a) ?? -1),
+    );
 
     return (
         <div
@@ -604,16 +607,7 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                                         .slice(0, 2)
                                         .toUpperCase();
 
-                                    const displayPoints = isFinished
-                                        ? mp.points
-                                        : isLive && match.home_score !== null && match.away_score !== null
-                                          ? calcProvisionalPoints(
-                                                mp.predicted_home,
-                                                mp.predicted_away,
-                                                match.home_score!,
-                                                match.away_score!,
-                                            )
-                                          : null;
+                                    const displayPoints = computePoints(mp);
 
                                     return (
                                         <div
