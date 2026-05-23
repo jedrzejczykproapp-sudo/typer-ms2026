@@ -426,7 +426,7 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
             )}
         >
             {/* Header */}
-            <div className="flex items-center justify-between gap-2">
+            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
                 <span className="text-xs font-medium text-tertiary">
                     {groupName
                         ? groupName
@@ -436,15 +436,15 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                             ? `Kolejka ${match.matchday}`
                             : stageLabels[match.stage]}
                 </span>
-                <div className="flex shrink-0 items-center gap-1.5">
+                <div className="flex justify-center">
                     {isLive && (
-                        <span className="flex items-center gap-1 rounded-full bg-success-primary px-1.5 py-0.5 text-xs font-bold text-success-primary">
+                        <span className="flex items-center gap-1 rounded-full bg-success-primary px-2 py-0.5 text-xs font-bold text-success-primary">
                             <span className="size-1.5 animate-pulse rounded-full bg-success-solid" />
                             Trwa
                         </span>
                     )}
-                    <span className="text-xs text-tertiary">{formatMatchDate(match.match_date)}</span>
                 </div>
+                <span className="text-right text-xs text-tertiary">{formatMatchDate(match.match_date)}</span>
             </div>
 
             {isTbd ? (
