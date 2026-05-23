@@ -38,16 +38,16 @@ export function GroupTabPanel({
     return (
         <div className="flex flex-col gap-3">
             {/* Tab bar */}
-            <div className="flex gap-1 rounded-xl bg-secondary p-1">
+            <div className="flex overflow-hidden rounded-xl bg-secondary">
                 {TABS.map(({ key, label }) => (
                     <button
                         key={key}
                         type="button"
                         onClick={() => switchTab(key)}
-                        className={`flex-1 rounded-lg py-2 text-center text-sm font-semibold transition ${
+                        className={`flex-1 border-b-2 py-4 text-center text-sm transition ${
                             activeTab === key
-                                ? "bg-primary text-primary shadow-xs"
-                                : "text-tertiary hover:text-secondary"
+                                ? "border-primary font-bold text-primary"
+                                : "border-secondary font-medium text-tertiary hover:text-secondary"
                         }`}
                     >
                         {label}
