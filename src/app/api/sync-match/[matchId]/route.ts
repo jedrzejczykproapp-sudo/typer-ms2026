@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { syncMatchData } from "@/lib/api-football";
 
-// How stale the data can be before we re-fetch from API-Football
-const STALE_LIVE_MS = 60_000;      // 1 min during live match
-const STALE_FINISHED_MS = 300_000; // 5 min after finished (data rarely changes)
+// How stale the data can be before we re-fetch from apifootball.com
+const STALE_LIVE_MS = 55_000;       // ~55 s during live match (fires every 60 s from card)
+const STALE_FINISHED_MS = 300_000;  // 5 min after finished (data rarely changes)
 
 export async function POST(
     req: NextRequest,
@@ -19,7 +19,7 @@ export async function POST(
     // ── 1. Load match row ──────────────────────────────────────────────────────
     const { data: match, error: matchErr } = await admin
         .from("matches")
-        .select("id, home_team, away_team, match_date, status, api_football_id")
+        .select("id, home_team, away_team, match_date, status, api_football_id, synced_at")
         .eq("id", matchId)
         .single();
 
@@ -33,15 +33,9 @@ export async function POST(
         return NextResponse.json({ skipped: "not started yet" });
     }
 
-    // ── 2. Check staleness using match_stats.updated_at as last-sync timestamp ─
-    const { data: existingSt } = await admin
-        .from("match_stats")
-        .select("updated_at")
-        .eq("match_id", matchId)
-        .maybeSingle();
-
-    if (existingSt?.updated_at) {
-        const age = Date.now() - new Date(existingSt.updated_at).getTime();
+    // ── 2. Staleness check — use matches.synced_at (set on every successful sync) ─
+    if (match.synced_at) {
+        const age = Date.now() - new Date(match.synced_at).getTime();
         const threshold =
             match.status === "finished" ? STALE_FINISHED_MS : STALE_LIVE_MS;
         if (age < threshold) {
@@ -49,7 +43,7 @@ export async function POST(
         }
     }
 
-    // ── 3. Fetch from API-Football ─────────────────────────────────────────────
+    // ── 3. Fetch from apifootball.com ─────────────────────────────────────────
     console.log("[sync] fetching", { competitionType, matchDate: match.match_date, homeTeam: match.home_team, awayTeam: match.away_team });
     const result = await syncMatchData({
         competitionType,
@@ -61,13 +55,14 @@ export async function POST(
 
     if (!result) {
         console.error("[sync] syncMatchData returned null — check APIFOOTBALL_API_KEY, leagueId, team names");
-        return NextResponse.json({ error: "api-football sync failed", competitionType, homeTeam: match.home_team, awayTeam: match.away_team }, { status: 502 });
+        return NextResponse.json({ error: "apifootball sync failed", competitionType, homeTeam: match.home_team, awayTeam: match.away_team }, { status: 502 });
     }
     console.log("[sync] got result", { fixtureId: result.fixtureId, events: result.events.length, stats: !!result.stats, score: `${result.homeScore}:${result.awayScore}`, status: result.matchStatus });
 
-    // ── 4. Update match scores, status and cache fixture ID ───────────────────
+    // ── 4. Update match scores, status, fixture ID and synced_at ─────────────
     {
-        const updates: Record<string, unknown> = {};
+        const now = new Date().toISOString();
+        const updates: Record<string, unknown> = { synced_at: now };
         if (!match.api_football_id && result.fixtureId) updates.api_football_id = result.fixtureId;
         if (result.homeScore !== null) updates.home_score = result.homeScore;
         if (result.awayScore !== null) updates.away_score = result.awayScore;
@@ -76,9 +71,7 @@ export async function POST(
         if (rank[result.matchStatus] > rank[match.status as keyof typeof rank]) {
             updates.status = result.matchStatus;
         }
-        if (Object.keys(updates).length > 0) {
-            await admin.from("matches").update(updates).eq("id", matchId);
-        }
+        await admin.from("matches").update(updates).eq("id", matchId);
     }
 
     // ── 5. Write events (replace all for this match) ──────────────────────────

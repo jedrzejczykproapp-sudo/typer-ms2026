@@ -210,6 +210,23 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
         return () => clearInterval(id);
     }, [isDbLive, isFinished, match.match_date]);
 
+    // Background sync for live matches — pushes fresh score into DB so Realtime picks it up
+    useEffect(() => {
+        if (!isLive || isFinished) return;
+
+        const doSync = () => {
+            fetch(`/api/sync-match/${match.id}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ competitionType: competitionType ?? "" }),
+            }).catch(() => null);
+        };
+
+        doSync(); // natychmiastowy sync przy starcie
+        const id = setInterval(doSync, 60_000);
+        return () => clearInterval(id);
+    }, [isLive, isFinished, match.id, competitionType]); // eslint-disable-line react-hooks/exhaustive-deps
+
     // Realtime subscription + 5 s fallback poll — instant score updates during live
     useEffect(() => {
         const supabase = createClient();
