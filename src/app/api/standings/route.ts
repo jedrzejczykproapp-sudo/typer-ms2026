@@ -34,18 +34,18 @@ export async function GET(req: NextRequest) {
     }
 
     const rows: StandingRow[] = data.map((r: Record<string, string>) => ({
-        place: parseInt(r.standing_place) || 0,
+        place: parseInt(r.overall_league_position) || 0,
         team_id: r.team_id,
         team_name: r.team_name,
         team_badge: r.team_badge ?? "",
-        played: parseInt(r.standing_played) || 0,
-        won: parseInt(r.standing_win) || 0,
-        drawn: parseInt(r.standing_draw) || 0,
-        lost: parseInt(r.standing_loss) || 0,
-        goals_for: parseInt(r.standing_goals_for) || 0,
-        goals_against: parseInt(r.standing_goals_against) || 0,
-        points: parseInt(r.standing_pts) || 0,
-        description: r.standing_desc ?? "",
+        played: parseInt(r.overall_league_payed) || 0,
+        won: parseInt(r.overall_league_W) || 0,
+        drawn: parseInt(r.overall_league_D) || 0,
+        lost: parseInt(r.overall_league_L) || 0,
+        goals_for: parseInt(r.overall_league_GF) || 0,
+        goals_against: parseInt(r.overall_league_GA) || 0,
+        points: parseInt(r.overall_league_PTS) || 0,
+        description: r.overall_promotion ?? "",
     }));
 
     rows.sort((a, b) => a.place - b.place);
