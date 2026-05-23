@@ -60,7 +60,7 @@ export async function POST(
     });
 
     if (!result) {
-        console.error("[sync] syncMatchData returned null — check FOOTBALL_API_KEY, leagueId, season, team names");
+        console.error("[sync] syncMatchData returned null — check APIFOOTBALL_API_KEY, leagueId, team names");
         return NextResponse.json({ error: "api-football sync failed", competitionType, homeTeam: match.home_team, awayTeam: match.away_team }, { status: 502 });
     }
     console.log("[sync] got result", { fixtureId: result.fixtureId, events: result.events.length, stats: !!result.stats, score: `${result.homeScore}:${result.awayScore}`, status: result.matchStatus });

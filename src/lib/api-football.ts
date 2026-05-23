@@ -1,20 +1,15 @@
 /**
- * API-Football integration (https://www.api-football.com)
- * Free tier: 100 requests/day
- * Register at: https://dashboard.api-football.com/register
- * Env var: FOOTBALL_API_KEY
+ * apifootball.com integration (https://apifootball.com)
+ * Free tier: supports current seasons including Ekstraklasa 2025/26
+ * Register at: https://apifootball.com/documentation/
+ * Env var: APIFOOTBALL_API_KEY
  */
 
-const BASE = "https://v3.football.api-sports.io";
+const BASE = "https://apiv3.apifootball.com/";
 
-const LEAGUE_IDS: Record<string, number> = {
-    ekstraklasa_2526: 106,
-    wc_2026: 1,
-};
-
-const SEASONS: Record<string, number> = {
-    ekstraklasa_2526: 2025,
-    wc_2026: 2026,
+const LEAGUE_IDS: Record<string, string> = {
+    ekstraklasa_2526: "259",
+    wc_2026: "28",
 };
 
 function norm(s: string) {
@@ -26,60 +21,74 @@ function norm(s: string) {
         .trim();
 }
 
-function mapEventType(type: string, detail: string): string | null {
-    if (type === "Goal") {
-        if (detail.toLowerCase().includes("own")) return "own_goal";
-        if (detail.toLowerCase().includes("penalty")) return "penalty";
-        return "goal";
-    }
-    if (type === "Card") {
-        if (detail.toLowerCase().includes("yellow red")) return "yellow_red_card";
-        if (detail.toLowerCase().includes("red")) return "red_card";
-        if (detail.toLowerCase().includes("yellow")) return "yellow_card";
-    }
-    return null; // substitutions, VAR etc. — skip
+function parseMinute(time: string): { minute: number; extra_minute: number | null } {
+    const parts = time.split("+");
+    const minute = parseInt(parts[0]) || 0;
+    const extra_minute = parts[1] ? parseInt(parts[1]) || null : null;
+    return { minute, extra_minute };
 }
 
-// Map API-Football fixture status → our DB status
-function mapFixtureStatus(short: string): "upcoming" | "live" | "finished" {
-    const finished = ["FT", "AET", "PEN", "AWD", "WO"];
-    const live = ["1H", "HT", "2H", "ET", "P", "BT", "LIVE", "INT", "SUSP"];
-    if (finished.includes(short)) return "finished";
-    if (live.includes(short)) return "live";
+function mapCardType(card: string): string | null {
+    const c = card.toLowerCase();
+    if (c.includes("yellow/red") || c.includes("yellow red")) return "yellow_red_card";
+    if (c.includes("red")) return "red_card";
+    if (c.includes("yellow")) return "yellow_card";
+    return null;
+}
+
+function mapGoalInfo(info: string): string {
+    const i = info.toLowerCase();
+    if (i.includes("own")) return "own_goal";
+    if (i.includes("penalty") || i.includes("pen")) return "penalty";
+    return "goal";
+}
+
+function parseStat(val: string | null | undefined): number | null {
+    if (!val) return null;
+    return parseInt(val.replace("%", "").trim()) || null;
+}
+
+function mapStatus(match_live: string, match_status: string): "upcoming" | "live" | "finished" {
+    if (match_live === "1") return "live";
+    if (match_status === "FT" || match_status === "AET" || match_status === "PEN" || match_status === "Finished") return "finished";
     return "upcoming";
-}
-
-function parseStat(val: string | number | null): number | null {
-    if (val === null || val === undefined) return null;
-    if (typeof val === "number") return val;
-    return parseInt(val.replace("%", "")) || null;
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface ApiFixtureItem {
-    fixture: { id: number; status: { short: string } };
-    teams: { home: { id: number; name: string }; away: { id: number; name: string } };
-    goals: { home: number | null; away: number | null };
+interface ApiGoalscorer {
+    time: string;
+    home_scorer: string;
+    away_scorer: string;
+    info: string;
+    score: string;
 }
 
-interface ApiEventItem {
-    time: { elapsed: number; extra: number | null };
-    team: { id: number; name: string };
-    player: { id: number | null; name: string | null };
-    type: string;
-    detail: string;
-    comments: string | null;
+interface ApiCard {
+    time: string;
+    home_fault: string;
+    card: string;
+    away_fault: string;
+    info?: string;
 }
 
 interface ApiStatItem {
     type: string;
-    value: string | number | null;
+    home: string;
+    away: string;
 }
 
-interface ApiStatTeamItem {
-    team: { id: number };
-    statistics: ApiStatItem[];
+interface ApiMatch {
+    match_id: string;
+    match_hometeam_name: string;
+    match_awayteam_name: string;
+    match_hometeam_score: string;
+    match_awayteam_score: string;
+    match_status: string;
+    match_live: string;
+    goalscorer: ApiGoalscorer[] | "" | null;
+    cards: ApiCard[] | "" | null;
+    statistics: ApiStatItem[] | "" | null;
 }
 
 export interface SyncedEvent {
@@ -122,129 +131,159 @@ export async function syncMatchData(opts: {
     awayTeam: string;
     cachedFixtureId: number | null;
 }): Promise<SyncResult | null> {
-    const key = process.env.FOOTBALL_API_KEY;
+    const key = process.env.APIFOOTBALL_API_KEY;
     if (!key) {
-        console.error("[api-football] FOOTBALL_API_KEY is not set");
+        console.error("[apifootball] APIFOOTBALL_API_KEY is not set");
         return null;
     }
 
     const { competitionType, matchDate, homeTeam, awayTeam, cachedFixtureId } = opts;
-    const leagueId = LEAGUE_IDS[competitionType];
-    const season = SEASONS[competitionType];
-    if (!leagueId || !season) {
-        console.error("[api-football] unknown competitionType:", competitionType, "known:", Object.keys(LEAGUE_IDS));
-        return null;
-    }
 
-    const h = { "x-apisports-key": key };
-    let fixtureId = cachedFixtureId;
-    let homeTeamApiId: number | null = null;
-
-    // ── Step 1: find fixture if not cached ────────────────────────────────────
-    if (!fixtureId) {
-        const date = matchDate.slice(0, 10);
-        const url = `${BASE}/fixtures?league=${leagueId}&season=${season}&from=${date}&to=${date}`;
-        console.log("[api-football] fixture lookup:", url);
-        const res = await fetch(url, { headers: h });
+    // ── If we already have a fixture ID, fetch by match_id directly ───────────
+    if (cachedFixtureId) {
+        const url = `${BASE}?action=get_events&match_id=${cachedFixtureId}&APIkey=${key}`;
+        console.log("[apifootball] fetch by id:", url);
+        const res = await fetch(url);
         if (!res.ok) {
-            console.error("[api-football] fixture lookup failed:", res.status, res.statusText);
+            console.error("[apifootball] fetch by id failed:", res.status);
             return null;
         }
         const data = await res.json();
-        console.log("[api-football] fixtures found:", data.response?.length ?? 0, "errors:", data.errors);
-        const fixtures: ApiFixtureItem[] = data.response ?? [];
-
-        const found = fixtures.find((f) => {
-            const hn = norm(f.teams.home.name);
-            const an = norm(f.teams.away.name);
-            const ourH = norm(homeTeam);
-            const ourA = norm(awayTeam);
-            console.log("[api-football] comparing:", { hn, an, ourH, ourA });
-            // exact match or first-word match
-            return (
-                (hn === ourH || hn.includes(ourH.split(" ")[0])) &&
-                (an === ourA || an.includes(ourA.split(" ")[0]))
-            );
-        });
-
-        if (!found) {
-            console.error("[api-football] fixture not found for:", homeTeam, "vs", awayTeam, "on", date);
+        const matches: ApiMatch[] = Array.isArray(data) ? data : [];
+        const match = matches[0];
+        if (!match) {
+            console.error("[apifootball] match not found by id:", cachedFixtureId);
             return null;
         }
-        fixtureId = found.fixture.id;
-        homeTeamApiId = found.teams.home.id;
+        return parseMatch(match, cachedFixtureId);
     }
 
-    // ── Step 2: fetch events + stats + fixture (always, for score/status/homeTeamId) ──
-    const [evRes, stRes, fxRes] = await Promise.all([
-        fetch(`${BASE}/fixtures/events?fixture=${fixtureId}`, { headers: h }),
-        fetch(`${BASE}/fixtures/statistics?fixture=${fixtureId}`, { headers: h }),
-        fetch(`${BASE}/fixtures?id=${fixtureId}`, { headers: h }),
-    ]);
-
-    let fixtureHomeScore: number | null = null;
-    let fixtureAwayScore: number | null = null;
-    let fixtureStatusShort = "NS";
-
-    if (fxRes?.ok) {
-        const d = await fxRes.json();
-        const fx: ApiFixtureItem & { fixture: { status: { short: string } } } = d.response?.[0];
-        if (fx) {
-            if (homeTeamApiId == null) homeTeamApiId = fx.teams.home.id;
-            fixtureHomeScore = fx.goals.home;
-            fixtureAwayScore = fx.goals.away;
-            fixtureStatusShort = fx.fixture.status.short;
-        }
+    // ── Otherwise search by date + league ────────────────────────────────────
+    const leagueId = LEAGUE_IDS[competitionType];
+    if (!leagueId) {
+        console.error("[apifootball] unknown competitionType:", competitionType, "known:", Object.keys(LEAGUE_IDS));
+        return null;
     }
 
-    const evData = evRes.ok ? await evRes.json() : { response: [] };
-    const stData = stRes.ok ? await stRes.json() : { response: [] };
+    const date = matchDate.slice(0, 10);
+    const url = `${BASE}?action=get_events&from=${date}&to=${date}&league_id=${leagueId}&APIkey=${key}`;
+    console.log("[apifootball] fixture lookup:", url);
+    const res = await fetch(url);
+    if (!res.ok) {
+        console.error("[apifootball] fixture lookup failed:", res.status, res.statusText);
+        return null;
+    }
 
-    // ── Step 3: parse events ─────────────────────────────────────────────────
-    const events: SyncedEvent[] = (evData.response as ApiEventItem[])
-        .flatMap((e) => {
-            const type = mapEventType(e.type, e.detail);
-            if (!type) return [];
-            return [{
-                minute: e.time.elapsed,
-                extra_minute: e.time.extra ?? null,
-                event_type: type,
-                player_name: e.player.name ?? null,
-                team: (homeTeamApiId && e.team.id === homeTeamApiId ? "home" : "away") as "home" | "away",
-                detail: e.comments,
-            }];
+    const data = await res.json();
+    if (!Array.isArray(data)) {
+        console.error("[apifootball] unexpected response (not array):", JSON.stringify(data).slice(0, 200));
+        return null;
+    }
+
+    const matches: ApiMatch[] = data;
+    console.log("[apifootball] matches on", date, ":", matches.length);
+
+    const found = matches.find((m) => {
+        const hn = norm(m.match_hometeam_name);
+        const an = norm(m.match_awayteam_name);
+        const ourH = norm(homeTeam);
+        const ourA = norm(awayTeam);
+        console.log("[apifootball] comparing:", { hn, an, ourH, ourA });
+        return (
+            (hn === ourH || hn.includes(ourH.split(" ")[0]) || ourH.includes(hn.split(" ")[0])) &&
+            (an === ourA || an.includes(ourA.split(" ")[0]) || ourA.includes(an.split(" ")[0]))
+        );
+    });
+
+    if (!found) {
+        console.error("[apifootball] match not found:", homeTeam, "vs", awayTeam, "on", date);
+        return null;
+    }
+
+    return parseMatch(found, null);
+}
+
+function parseMatch(match: ApiMatch, knownId: number | null): SyncResult {
+    const fixtureId = knownId ?? parseInt(match.match_id);
+
+    const homeScore = match.match_hometeam_score !== ""
+        ? parseInt(match.match_hometeam_score)
+        : null;
+    const awayScore = match.match_awayteam_score !== ""
+        ? parseInt(match.match_awayteam_score)
+        : null;
+
+    const matchStatus = mapStatus(match.match_live, match.match_status);
+
+    // ── Parse events (goals + cards) ──────────────────────────────────────────
+    const events: SyncedEvent[] = [];
+
+    const goalscorers: ApiGoalscorer[] = Array.isArray(match.goalscorer) ? match.goalscorer : [];
+    for (const g of goalscorers) {
+        const isHome = g.home_scorer !== "";
+        const playerName = isHome ? g.home_scorer : g.away_scorer;
+        if (!playerName) continue;
+        const { minute, extra_minute } = parseMinute(g.time);
+        events.push({
+            minute,
+            extra_minute,
+            event_type: mapGoalInfo(g.info ?? ""),
+            player_name: playerName || null,
+            team: isHome ? "home" : "away",
+            detail: g.score || null,
         });
+    }
 
-    // ── Step 4: parse stats ──────────────────────────────────────────────────
-    const statTeams: ApiStatTeamItem[] = stData.response ?? [];
-    const homeSt = statTeams.find((s) => homeTeamApiId && s.team.id === homeTeamApiId);
-    const awaySt = statTeams.find((s) => homeTeamApiId && s.team.id !== homeTeamApiId);
+    const cards: ApiCard[] = Array.isArray(match.cards) ? match.cards : [];
+    for (const c of cards) {
+        const cardType = mapCardType(c.card);
+        if (!cardType) continue;
+        const isHome = c.home_fault !== "";
+        const playerName = isHome ? c.home_fault : c.away_fault;
+        const { minute, extra_minute } = parseMinute(c.time);
+        events.push({
+            minute,
+            extra_minute,
+            event_type: cardType,
+            player_name: playerName || null,
+            team: isHome ? "home" : "away",
+            detail: null,
+        });
+    }
 
-    const getStat = (t: ApiStatTeamItem | undefined, name: string) =>
-        t ? parseStat(t.statistics.find((s) => s.type === name)?.value ?? null) : null;
+    // Sort by minute, then extra_minute
+    events.sort((a, b) => a.minute - b.minute || (a.extra_minute ?? 0) - (b.extra_minute ?? 0));
 
-    const stats: SyncedStats | null =
-        homeSt && awaySt
-            ? {
-                  home_possession: getStat(homeSt, "Ball Possession"),
-                  away_possession: getStat(awaySt, "Ball Possession"),
-                  home_shots: getStat(homeSt, "Total Shots"),
-                  away_shots: getStat(awaySt, "Total Shots"),
-                  home_shots_on_target: getStat(homeSt, "Shots on Goal"),
-                  away_shots_on_target: getStat(awaySt, "Shots on Goal"),
-                  home_corners: getStat(homeSt, "Corner Kicks"),
-                  away_corners: getStat(awaySt, "Corner Kicks"),
-                  home_fouls: getStat(homeSt, "Fouls"),
-                  away_fouls: getStat(awaySt, "Fouls"),
-              }
-            : null;
+    // ── Parse statistics ──────────────────────────────────────────────────────
+    const statistics: ApiStatItem[] = Array.isArray(match.statistics) ? match.statistics : [];
+
+    const getStat = (name: string, side: "home" | "away") => {
+        const st = statistics.find((s) => s.type === name);
+        return st ? parseStat(side === "home" ? st.home : st.away) : null;
+    };
+
+    const hasStats = statistics.length > 0;
+    const stats: SyncedStats | null = hasStats
+        ? {
+              home_possession: getStat("Ball Possession", "home"),
+              away_possession: getStat("Ball Possession", "away"),
+              home_shots: getStat("Shots Total", "home"),
+              away_shots: getStat("Shots Total", "away"),
+              home_shots_on_target: getStat("Shots On Goal", "home"),
+              away_shots_on_target: getStat("Shots On Goal", "away"),
+              home_corners: getStat("Corners", "home"),
+              away_corners: getStat("Corners", "away"),
+              home_fouls: getStat("Fouls", "home"),
+              away_fouls: getStat("Fouls", "away"),
+          }
+        : null;
 
     return {
         fixtureId,
         events,
         stats,
-        homeScore: fixtureHomeScore,
-        awayScore: fixtureAwayScore,
-        matchStatus: mapFixtureStatus(fixtureStatusShort),
+        homeScore: isNaN(homeScore as number) ? null : homeScore,
+        awayScore: isNaN(awayScore as number) ? null : awayScore,
+        matchStatus,
     };
 }
