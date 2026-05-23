@@ -46,8 +46,8 @@ export function GroupTabPanel({
                         onClick={() => switchTab(key)}
                         className={`flex-1 border-b-2 py-4 text-center text-sm transition ${
                             activeTab === key
-                                ? "border-primary font-bold text-primary"
-                                : "border-secondary font-medium text-tertiary hover:text-secondary"
+                                ? "border-white font-bold text-white"
+                                : "border-secondary/40 font-medium text-tertiary hover:text-secondary"
                         }`}
                     >
                         {label}
