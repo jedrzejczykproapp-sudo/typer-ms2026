@@ -41,6 +41,34 @@ export function getClubDisplayName(teamName: string): string {
     return EKSTRAKLASA_DISPLAY_NAMES[teamName] ?? teamName;
 }
 
+// Normalize for fuzzy matching (strips diacritics, lowercases)
+function norm(s: string) {
+    return s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[łŁ]/g, "l").toLowerCase().trim();
+}
+
+// Lazy-built normalized → DB name lookup
+let _normMap: Map<string, string> | null = null;
+function getNormMap() {
+    if (!_normMap) {
+        _normMap = new Map(Object.keys(EKSTRAKLASA_CRESTS).map((k) => [norm(k), k]));
+    }
+    return _normMap;
+}
+
+/** Map an apifootball.com team name (no diacritics) to our canonical DB name */
+export function resolveClubName(apiName: string): string {
+    const map = getNormMap();
+    // exact normalized match
+    const exact = map.get(norm(apiName));
+    if (exact) return exact;
+    // partial: first word of API name matches first word of DB name
+    const firstWord = norm(apiName).split(" ")[0];
+    for (const [k, v] of map) {
+        if (k.startsWith(firstWord)) return v;
+    }
+    return apiName; // fallback: use as-is
+}
+
 // Returns [line1, line2] for two-line card display (split at first space).
 export function getClubNameLines(teamName: string): [string, string] {
     const display = getClubDisplayName(teamName);

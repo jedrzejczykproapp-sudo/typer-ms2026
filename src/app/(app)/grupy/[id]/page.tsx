@@ -5,6 +5,7 @@ import { getOdds } from "@/lib/odds";
 import { getFlagUrl, getTeamNamePl } from "@/lib/flags";
 import { getClubCrestUrl, getClubDisplayName } from "@/lib/clubs";
 import { EKSTRAKLASA_STANDINGS, STANDINGS_ROUND } from "@/lib/ekstraklasa-standings";
+import { LiveStandings } from "@/components/app/live-standings";
 import { PredictionCard } from "@/components/app/prediction-card";
 import { LiveLeaderboard } from "@/components/app/live-leaderboard";
 import { GroupSettingsMenu } from "@/components/app/group-settings-menu";
@@ -225,85 +226,9 @@ function sortStandings(teams: TeamStats[]) {
 async function GrupyTab({ competitionType = "wc_2026" }: { competitionType?: string }) {
     const isEkstraklasa = competitionType === "ekstraklasa_2526";
 
-    // ── Ekstraklasa: use official standings data (no DB query needed) ─────────
+    // ── Ekstraklasa: live standings from apifootball.com ─────────────────────
     if (isEkstraklasa) {
-        return (
-            <div className="overflow-hidden rounded-xl border border-secondary bg-primary shadow-xs">
-                <div className="flex items-center justify-between border-b border-secondary px-4 py-2.5">
-                    <h3 className="text-sm font-bold text-primary">Ekstraklasa PKO BP 2025/26</h3>
-                    <span className="text-xs text-tertiary">po {STANDINGS_ROUND}. kolejce</span>
-                </div>
-
-                {/* Nagłówki kolumn */}
-                <div className="grid grid-cols-[28px_1fr_28px_40px_24px_24px_24px_52px] items-center border-b border-secondary px-3 py-1.5">
-                    <span />
-                    <span className="text-xs font-medium uppercase tracking-wide text-quaternary">Drużyna</span>
-                    <span className="text-center text-xs font-medium uppercase tracking-wide text-quaternary">M</span>
-                    <span className="text-center text-xs font-medium uppercase tracking-wide text-quaternary">Pkt</span>
-                    <span className="text-center text-xs font-medium uppercase tracking-wide text-quaternary">Z</span>
-                    <span className="text-center text-xs font-medium uppercase tracking-wide text-quaternary">R</span>
-                    <span className="text-center text-xs font-medium uppercase tracking-wide text-quaternary">P</span>
-                    <span className="text-center text-xs font-medium uppercase tracking-wide text-quaternary">B</span>
-                </div>
-
-                {/* Wiersze drużyn */}
-                {EKSTRAKLASA_STANDINGS.map((team, idx) => {
-                    const crestUrl = getClubCrestUrl(team.team);
-                    return (
-                        <div
-                            key={team.team}
-                            className={`grid grid-cols-[28px_1fr_28px_40px_24px_24px_24px_52px] items-center px-3 py-2 ${
-                                idx < EKSTRAKLASA_STANDINGS.length - 1 ? "border-b border-secondary" : ""
-                            }`}
-                        >
-                            {/* Pozycja */}
-                            <span className="text-center text-xs tabular-nums text-tertiary">{idx + 1}</span>
-
-                            {/* Herb + skrót */}
-                            <div className="flex min-w-0 items-center gap-2">
-                                {crestUrl ? (
-                                    <img src={crestUrl} alt={team.abbr} className="size-6 shrink-0 rounded object-contain" />
-                                ) : (
-                                    <div className="flex size-6 shrink-0 items-center justify-center rounded bg-secondary text-[10px] font-bold text-tertiary">
-                                        {team.team.charAt(0)}
-                                    </div>
-                                )}
-                                <span className="text-sm font-semibold text-primary">{team.abbr}</span>
-                            </div>
-
-                            {/* M */}
-                            <span className="text-center text-sm tabular-nums text-secondary">{team.played}</span>
-
-                            {/* PKT */}
-                            <div className="flex items-center justify-center gap-0.5">
-                                <span className="text-sm font-bold tabular-nums text-primary">{team.pts}</span>
-                                {team.note && <span className="text-[9px] font-bold leading-none text-error-primary">*</span>}
-                            </div>
-
-                            {/* Z */}
-                            <span className="text-center text-sm tabular-nums text-secondary">{team.won}</span>
-                            {/* R */}
-                            <span className="text-center text-sm tabular-nums text-secondary">{team.drawn}</span>
-                            {/* P */}
-                            <span className="text-center text-sm tabular-nums text-secondary">{team.lost}</span>
-                            {/* B */}
-                            <span className="text-center text-xs tabular-nums text-secondary">{team.gf}:{team.ga}</span>
-                        </div>
-                    );
-                })}
-
-                {/* Przypis dla drużyn z odjętymi punktami */}
-                {EKSTRAKLASA_STANDINGS.some((t) => t.note) && (
-                    <div className="border-t border-secondary px-3 py-2">
-                        {EKSTRAKLASA_STANDINGS.filter((t) => t.note).map((t) => (
-                            <p key={t.team} className="text-xs text-tertiary">
-                                * {t.abbr}: {t.note}
-                            </p>
-                        ))}
-                    </div>
-                )}
-            </div>
-        );
+        return <LiveStandings leagueId="259" title="Ekstraklasa PKO BP 2025/26" />;
     }
 
     // ── WC: group-by-group display ────────────────────────────────────────────
