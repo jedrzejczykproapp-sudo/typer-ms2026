@@ -546,32 +546,24 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                 )
             )}
 
-            {/* "Zobacz typy" button — live & finished */}
+            {/* Pokaż wyniki — live & finished */}
             {isLocked && !isTbd && (
-                <div className="border-t border-secondary pt-1">
-                    <button
-                        type="button"
+                <div className="flex flex-col gap-2">
+                    <Button
+                        color="secondary"
+                        size="sm"
+                        iconTrailing={isExpanded ? ChevronUp : ChevronDown}
                         onClick={() => setIsExpanded((v) => !v)}
-                        className="flex w-full items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-medium text-secondary transition hover:text-primary"
+                        className="w-full"
                     >
-                        {isExpanded ? (
-                            <>
-                                Ukryj typy
-                                <ChevronUp className="size-4" />
-                            </>
-                        ) : (
-                            <>
-                                Zobacz typy
-                                <ChevronDown className="size-4" />
-                            </>
-                        )}
-                    </button>
+                        {isExpanded ? "Ukryj wyniki" : "Pokaż wyniki"}
+                    </Button>
 
                     {/* Expanded predictions list */}
                     {isExpanded && (
-                        <div className="mt-2 flex flex-col gap-1">
+                        <div className="flex flex-col gap-1 rounded-xl border border-secondary bg-secondary/40 p-2">
                             {isLoadingPreds ? (
-                                <div className="flex flex-col gap-2 py-2">
+                                <div className="flex flex-col gap-2 px-1 py-2">
                                     {[1, 2, 3].map((i) => (
                                         <div key={i} className="flex items-center gap-3">
                                             <div className="size-7 animate-pulse rounded-full bg-secondary" />
