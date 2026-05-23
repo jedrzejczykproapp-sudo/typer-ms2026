@@ -210,19 +210,6 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
         return () => clearInterval(id);
     }, [isDbLive, isFinished, match.match_date]);
 
-    // Background score sync — call our sync endpoint once for any started match
-    // that has no score yet (covers finished matches whose score isn't in DB)
-    useEffect(() => {
-        const started = Date.now() >= new Date(match.match_date).getTime();
-        if (!started) return;
-        if (liveScore.home !== null && liveScore.away !== null) return; // already have score
-        fetch(`/api/sync-match/${match.id}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ competitionType: competitionType ?? "" }),
-        }).catch(() => null);
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
     // Realtime subscription + 5 s fallback poll — instant score updates during live
     useEffect(() => {
         const supabase = createClient();
@@ -231,24 +218,6 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
             setLiveScore({ home: row.home_score, away: row.away_score });
             setLiveStatus(row.status as typeof match.status);
         };
-
-        // For finished matches with missing scores: poll every 3s until we get them
-        if (isFinished && (liveScore.home === null || liveScore.away === null)) {
-            let attempts = 0;
-            const id = setInterval(() => {
-                attempts++;
-                supabase
-                    .from("matches")
-                    .select("home_score, away_score, status")
-                    .eq("id", match.id)
-                    .single()
-                    .then(({ data }) => {
-                        if (data) apply(data);
-                        if (data?.home_score !== null || attempts > 10) clearInterval(id);
-                    });
-            }, 3_000);
-            return () => clearInterval(id);
-        }
 
         if (isFinished) return;
 
