@@ -140,8 +140,11 @@ function TeamFlag({ teamName, competitionType, size = "md" }: { teamName: string
 }
 
 export function PredictionCard({ match, groupId, prediction, odds, competitionType, groupName }: PredictionCardProps) {
-    const isFinished = match.status === "finished";
-    const isDbLive = match.status === "live";
+    // Polled live match data — refreshed every 30 s so score stays current
+    const [liveStatus, setLiveStatus] = useState(match.status);
+    const [liveScore, setLiveScore] = useState({ home: match.home_score, away: match.away_score });
+    const isFinished = liveStatus === "finished";
+    const isDbLive = liveStatus === "live";
     const isTbd = match.home_team === "TBD";
 
     const [homeScore, setHomeScore] = useState(prediction?.predicted_home ?? 0);
@@ -200,6 +203,26 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
         const id = setInterval(tick, 30_000);
         return () => clearInterval(id);
     }, [isDbLive, isFinished, match.match_date]);
+
+    // Poll DB every 30 s when live — keeps score/status in sync without page reload
+    useEffect(() => {
+        if (isFinished) return;
+        const supabase = createClient();
+        const poll = async () => {
+            const { data } = await supabase
+                .from("matches")
+                .select("home_score, away_score, status")
+                .eq("id", match.id)
+                .single();
+            if (data) {
+                setLiveScore({ home: data.home_score, away: data.away_score });
+                setLiveStatus(data.status as typeof match.status);
+            }
+        };
+        poll();
+        const id = setInterval(poll, 30_000);
+        return () => clearInterval(id);
+    }, [isFinished, match.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ─── Auto-save helper ────────────────────────────────────────────────────
     function scheduleAutoSave() {
@@ -350,16 +373,18 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
 
     const isSavedDisabled = hasPrediction && !hasChanged && !saved;
 
-    // Compute points for a member — DB value preferred, fallback to provisional from score
+    // Compute points for a member — DB value preferred, fallback to provisional from live score
     const computePoints = (p: MemberPrediction): number | null => {
+        const hs = liveScore.home;
+        const as = liveScore.away;
         if (isFinished) {
             if (p.points !== null) return p.points;
-            if (match.home_score !== null && match.away_score !== null)
-                return calcProvisionalPoints(p.predicted_home, p.predicted_away, match.home_score, match.away_score);
+            if (hs !== null && as !== null)
+                return calcProvisionalPoints(p.predicted_home, p.predicted_away, hs, as);
             return null;
         }
-        if (isLive && match.home_score !== null && match.away_score !== null)
-            return calcProvisionalPoints(p.predicted_home, p.predicted_away, match.home_score, match.away_score);
+        if (isLive && hs !== null && as !== null)
+            return calcProvisionalPoints(p.predicted_home, p.predicted_away, hs, as);
         return null;
     };
 
@@ -420,10 +445,9 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                     <div className="flex items-center gap-2">
                         <div className="flex flex-1 justify-center">
                             {isFinished ? (
-                                <span className="text-4xl font-bold tabular-nums text-primary">{match.home_score}</span>
+                                <span className="text-4xl font-bold tabular-nums text-primary">{liveScore.home}</span>
                             ) : isLive ? (
-                                /* actual match score (0 if DB not yet updated) */
-                                <span className="text-4xl font-bold tabular-nums text-primary">{match.home_score ?? 0}</span>
+                                <span className="text-4xl font-bold tabular-nums text-primary">{liveScore.home ?? 0}</span>
                             ) : (
                                 <ScoreInput value={homeScore} onChange={handleHomeChange} disabled={false} />
                             )}
@@ -431,9 +455,9 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                         <span className={cx("shrink-0 text-2xl font-bold", isLive ? "text-white" : "text-tertiary")}>:</span>
                         <div className="flex flex-1 justify-center">
                             {isFinished ? (
-                                <span className="text-4xl font-bold tabular-nums text-primary">{match.away_score}</span>
+                                <span className="text-4xl font-bold tabular-nums text-primary">{liveScore.away}</span>
                             ) : isLive ? (
-                                <span className="text-4xl font-bold tabular-nums text-primary">{match.away_score ?? 0}</span>
+                                <span className="text-4xl font-bold tabular-nums text-primary">{liveScore.away ?? 0}</span>
                             ) : (
                                 <ScoreInput value={awayScore} onChange={handleAwayChange} disabled={false} />
                             )}
