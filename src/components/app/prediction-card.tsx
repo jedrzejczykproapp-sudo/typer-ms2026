@@ -467,6 +467,11 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                             Trwa
                         </span>
                     )}
+                    {isFinished && (
+                        <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-tertiary">
+                            Zakończony
+                        </span>
+                    )}
                 </div>
                 <span className="text-right text-xs text-tertiary">{formatMatchDate(match.match_date)}</span>
             </div>
@@ -535,8 +540,8 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                         </div>
                     </div>
 
-                    {/* Live progress bar + minute */}
-                    {isLive && liveState && (
+                    {/* Live progress bar + minute — hidden after match ends */}
+                    {isLive && !isFinished && liveState && (
                         <div className="flex flex-col gap-1.5">
                             <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
                                 <div
