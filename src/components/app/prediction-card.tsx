@@ -425,7 +425,7 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                                 <ScoreInput value={homeScore} onChange={handleHomeChange} disabled={false} />
                             )}
                         </div>
-                        <span className={cx("shrink-0 text-2xl font-bold", isLive ? "text-success-primary" : "text-tertiary")}>:</span>
+                        <span className={cx("shrink-0 text-2xl font-bold", isLive ? "text-white" : "text-tertiary")}>:</span>
                         <div className="flex flex-1 justify-center">
                             {isFinished ? (
                                 <span className="text-4xl font-bold tabular-nums text-primary">{match.away_score}</span>
