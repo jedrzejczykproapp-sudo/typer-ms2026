@@ -83,15 +83,6 @@ export function MatchDetailsPanel({ matchId, homeTeam, awayTeam, competitionType
         const supabase = createClient();
         let cancelled = false;
 
-        async function sync() {
-            // Fire-and-forget sync — no await, errors silently ignored
-            fetch(`/api/sync-match/${matchId}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ competitionType: competitionType ?? "" }),
-            }).catch(() => null);
-        }
-
         async function load() {
             setLoading(true);
             const [{ data: evts }, { data: st }] = await Promise.all([
@@ -131,10 +122,10 @@ export function MatchDetailsPanel({ matchId, homeTeam, awayTeam, competitionType
 
         syncThenLoad();
 
-        // During live: re-sync every 60 s; after finished: one-shot sync is enough
+        // During live: re-sync every 60 s (await sync before reloading events)
         let interval: ReturnType<typeof setInterval> | null = null;
         if (isLive) {
-            interval = setInterval(() => { sync().then(load); }, 60_000);
+            interval = setInterval(syncThenLoad, 60_000);
         }
 
         return () => {

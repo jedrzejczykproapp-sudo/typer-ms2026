@@ -1,12 +1,12 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getMatchesWithPredictions, getLeaderboard } from "@/actions/prediction-actions";
+import { getMatchesWithPredictions, getLeaderboardWithLive } from "@/actions/prediction-actions";
 import { getOdds } from "@/lib/odds";
 import { getFlagUrl, getTeamNamePl } from "@/lib/flags";
 import { getClubCrestUrl, getClubDisplayName } from "@/lib/clubs";
 import { EKSTRAKLASA_STANDINGS, STANDINGS_ROUND } from "@/lib/ekstraklasa-standings";
 import { PredictionCard } from "@/components/app/prediction-card";
-import { LeaderboardTable } from "@/components/app/leaderboard-table";
+import { LiveLeaderboard } from "@/components/app/live-leaderboard";
 import { GroupSettingsMenu } from "@/components/app/group-settings-menu";
 import { GroupSwitcherDrawer } from "@/components/app/group-switcher-drawer";
 import { GroupTabPanel } from "./tab-panel";
@@ -159,14 +159,14 @@ async function TypowaniaTab({ groupId, userId }: { groupId: string; userId: stri
 }
 
 async function TabelaTab({ groupId, userId }: { groupId: string; userId: string }) {
-    const entries = await getLeaderboard(groupId);
+    const entries = await getLeaderboardWithLive(groupId);
 
     return (
         <div className="overflow-hidden rounded-xl border border-secondary bg-primary shadow-xs">
             <div className="border-b border-secondary px-4 py-3">
                 <h2 className="font-semibold text-primary">Leaderboard</h2>
             </div>
-            <LeaderboardTable entries={entries} currentUserId={userId} />
+            <LiveLeaderboard groupId={groupId} initialEntries={entries} currentUserId={userId} />
         </div>
     );
 }

@@ -109,6 +109,81 @@ export async function getLeaderboard(groupId: string): Promise<LeaderboardEntry[
     return stats;
 }
 
+// Like getLeaderboard but adds provisional points for live matches
+export async function getLeaderboardWithLive(groupId: string): Promise<LeaderboardEntry[]> {
+    const supabase = await createClient();
+
+    const { data: members } = await supabase
+        .from("group_members")
+        .select("user_id")
+        .eq("group_id", groupId);
+
+    if (!members?.length) return [];
+
+    const userIds = members.map((m) => m.user_id);
+
+    const [{ data: profiles }, { data: predictions }, { data: liveMatches }] = await Promise.all([
+        supabase.from("profiles").select("id, display_name, avatar_url").in("id", userIds),
+        supabase.from("predictions").select("*").eq("group_id", groupId),
+        supabase
+            .from("matches")
+            .select("id, home_score, away_score, status")
+            .eq("status", "live")
+            .not("home_score", "is", null),
+    ]);
+
+    const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
+    const liveMap = new Map((liveMatches ?? []).map((m) => [m.id, m]));
+    const preds = predictions ?? [];
+
+    function calcProvisional(ph: number, pa: number, ah: number, aa: number): number {
+        if (ph === ah && pa === aa) return 3;
+        if (Math.sign(ph - pa) === Math.sign(ah - aa)) return 1;
+        return 0;
+    }
+
+    const stats = members.map((member) => {
+        const profile = profileMap.get(member.user_id);
+        const userPreds = preds.filter((p) => p.user_id === member.user_id);
+
+        let totalPoints = 0;
+        let exactScores = 0;
+        let correctResults = 0;
+
+        for (const p of userPreds) {
+            const live = liveMap.get(p.match_id);
+            if (live && live.home_score !== null && live.away_score !== null) {
+                // Live match — provisional points from current score
+                const pts = calcProvisional(p.predicted_home, p.predicted_away, live.home_score as number, live.away_score as number);
+                totalPoints += pts;
+                if (pts === 3) exactScores++;
+                else if (pts === 1) correctResults++;
+            } else if (p.points !== null) {
+                // Finished match — use stored points
+                totalPoints += p.points;
+                if (p.points === 3) exactScores++;
+                else if (p.points === 1) correctResults++;
+            }
+        }
+
+        return {
+            user_id: member.user_id,
+            display_name: profile?.display_name ?? null,
+            avatar_url: profile?.avatar_url ?? null,
+            total_points: totalPoints,
+            exact_scores: exactScores,
+            correct_results: correctResults,
+            predictions_count: userPreds.length,
+            rank: 0,
+        };
+    });
+
+    stats.sort((a, b) => b.total_points - a.total_points || b.exact_scores - a.exact_scores);
+    stats.forEach((s, i) => (s.rank = i + 1));
+
+    return stats;
+}
+
 export type MatchWithGroup = {
     match: Match;
     groupId: string;
