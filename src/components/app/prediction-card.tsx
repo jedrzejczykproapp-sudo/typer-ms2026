@@ -204,24 +204,48 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
         return () => clearInterval(id);
     }, [isDbLive, isFinished, match.match_date]);
 
-    // Poll DB every 30 s when live — keeps score/status in sync without page reload
+    // Realtime subscription + 5 s fallback poll — instant score updates during live
     useEffect(() => {
         if (isFinished) return;
         const supabase = createClient();
-        const poll = async () => {
-            const { data } = await supabase
+
+        const apply = (row: { home_score: number | null; away_score: number | null; status: string }) => {
+            setLiveScore({ home: row.home_score, away: row.away_score });
+            setLiveStatus(row.status as typeof match.status);
+        };
+
+        // Initial fetch
+        supabase
+            .from("matches")
+            .select("home_score, away_score, status")
+            .eq("id", match.id)
+            .single()
+            .then(({ data }) => { if (data) apply(data); });
+
+        // Realtime channel — fires instantly when DB row changes
+        const channel = supabase
+            .channel(`match-score:${match.id}`)
+            .on<{ home_score: number | null; away_score: number | null; status: string }>(
+                "postgres_changes",
+                { event: "UPDATE", schema: "public", table: "matches", filter: `id=eq.${match.id}` },
+                (payload) => apply(payload.new),
+            )
+            .subscribe();
+
+        // 5 s fallback poll — covers cases where Realtime isn't enabled on the table
+        const id = setInterval(() => {
+            supabase
                 .from("matches")
                 .select("home_score, away_score, status")
                 .eq("id", match.id)
-                .single();
-            if (data) {
-                setLiveScore({ home: data.home_score, away: data.away_score });
-                setLiveStatus(data.status as typeof match.status);
-            }
+                .single()
+                .then(({ data }) => { if (data) apply(data); });
+        }, 5_000);
+
+        return () => {
+            clearInterval(id);
+            supabase.removeChannel(channel);
         };
-        poll();
-        const id = setInterval(poll, 30_000);
-        return () => clearInterval(id);
     }, [isFinished, match.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ─── Auto-save helper ────────────────────────────────────────────────────
