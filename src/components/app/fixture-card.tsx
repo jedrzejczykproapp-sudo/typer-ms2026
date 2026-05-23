@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { CheckCircle, PlusCircle } from "@untitledui/icons";
 import type { Fixture } from "@/app/api/top-fixtures/route";
+import { cx } from "@/utils/cx";
 
 function TeamLogo({ badge, name }: { badge: string; name: string }) {
     const [err, setErr] = useState(false);
@@ -51,32 +53,49 @@ interface OddsRow {
 interface Props {
     fixture: Fixture;
     odds?: OddsRow;
+    selectable?: boolean;
+    selected?: boolean;
+    onToggle?: () => void;
 }
 
-export function FixtureCard({ fixture, odds }: Props) {
+export function FixtureCard({ fixture, odds, selectable, selected, onToggle }: Props) {
     const time = formatTime(fixture.match_date);
     const isLive = fixture.status === "1" || fixture.match_id && parseInt(fixture.status) > 0 && fixture.status !== "FT" && fixture.status !== "";
     const isFinished = fixture.status === "FT" || fixture.status === "AET" || fixture.status === "PEN" || fixture.status === "Finished";
     const hasScore = fixture.home_score !== "" && fixture.away_score !== "";
 
     return (
-        <div className="flex flex-col gap-3 rounded-xl border border-secondary bg-primary p-4 shadow-xs">
+        <div
+            className={cx(
+                "flex flex-col gap-3 rounded-xl border bg-primary p-4 shadow-xs transition duration-100",
+                selected ? "border-brand-solid ring-2 ring-brand-solid/20" : "border-secondary",
+                selectable && "cursor-pointer",
+            )}
+            onClick={selectable ? onToggle : undefined}
+        >
             {/* League + time */}
             <div className="flex items-center justify-between">
                 <span className="flex items-center gap-1.5 text-xs font-medium text-tertiary">
                     <span>{fixture.league_flag}</span>
                     <span>{fixture.league_name}</span>
                 </span>
-                {isLive ? (
-                    <span className="flex items-center gap-1 rounded-full bg-success-primary px-2 py-0.5 text-xs font-bold text-success-primary">
-                        <span className="size-1.5 animate-pulse rounded-full bg-success-solid" />
-                        {fixture.status}′
-                    </span>
-                ) : isFinished ? (
-                    <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-tertiary">Zakończony</span>
-                ) : (
-                    <span className="text-xs font-medium text-tertiary">{time}</span>
-                )}
+                <div className="flex items-center gap-2">
+                    {isLive ? (
+                        <span className="flex items-center gap-1 rounded-full bg-success-primary px-2 py-0.5 text-xs font-bold text-success-primary">
+                            <span className="size-1.5 animate-pulse rounded-full bg-success-solid" />
+                            {fixture.status}′
+                        </span>
+                    ) : isFinished ? (
+                        <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-tertiary">Zakończony</span>
+                    ) : (
+                        <span className="text-xs font-medium text-tertiary">{time}</span>
+                    )}
+                    {selectable && (
+                        selected
+                            ? <CheckCircle className="size-5 text-fg-brand-primary" />
+                            : <PlusCircle className="size-5 text-fg-quaternary" />
+                    )}
+                </div>
             </div>
 
             {/* Teams row */}

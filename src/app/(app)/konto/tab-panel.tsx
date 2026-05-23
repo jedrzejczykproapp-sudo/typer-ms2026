@@ -3,9 +3,9 @@
 import { useState, type ReactNode } from "react";
 
 const TABS = [
-    { key: "typowania", label: "Typowania" },
-    { key: "statystyki", label: "Statystyki" },
+    { key: "typowania", label: "Zakłady" },
     { key: "grupy", label: "Grupy" },
+    { key: "statystyki", label: "Statystyki" },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -62,8 +62,8 @@ export function KontoTabPanel({
 
             {/* Panels — all pre-rendered server-side, toggled via CSS */}
             <div className={activeTab !== "typowania" ? "hidden" : undefined}>{typowaniaContent}</div>
-            <div className={activeTab !== "statystyki" ? "hidden" : undefined}>{statystykiContent}</div>
             <div className={activeTab !== "grupy" ? "hidden" : undefined}>{grupyContent}</div>
+            <div className={activeTab !== "statystyki" ? "hidden" : undefined}>{statystykiContent}</div>
         </div>
     );
 }
