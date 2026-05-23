@@ -418,11 +418,9 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                         <div className="flex flex-1 justify-center">
                             {isFinished ? (
                                 <span className="text-4xl font-bold tabular-nums text-primary">{match.home_score}</span>
-                            ) : isDbLive ? (
-                                <span className="text-4xl font-bold tabular-nums text-primary">{match.home_score ?? 0}</span>
                             ) : isLive ? (
-                                /* match started client-side but no DB score yet — show locked prediction */
-                                <span className="text-4xl font-bold tabular-nums text-tertiary">{homeScore}</span>
+                                /* actual match score (0 if DB not yet updated) */
+                                <span className="text-4xl font-bold tabular-nums text-primary">{match.home_score ?? 0}</span>
                             ) : (
                                 <ScoreInput value={homeScore} onChange={handleHomeChange} disabled={false} />
                             )}
@@ -431,10 +429,8 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                         <div className="flex flex-1 justify-center">
                             {isFinished ? (
                                 <span className="text-4xl font-bold tabular-nums text-primary">{match.away_score}</span>
-                            ) : isDbLive ? (
-                                <span className="text-4xl font-bold tabular-nums text-primary">{match.away_score ?? 0}</span>
                             ) : isLive ? (
-                                <span className="text-4xl font-bold tabular-nums text-tertiary">{awayScore}</span>
+                                <span className="text-4xl font-bold tabular-nums text-primary">{match.away_score ?? 0}</span>
                             ) : (
                                 <ScoreInput value={awayScore} onChange={handleAwayChange} disabled={false} />
                             )}
