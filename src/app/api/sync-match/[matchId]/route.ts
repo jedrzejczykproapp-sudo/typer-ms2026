@@ -62,12 +62,20 @@ export async function POST(
         return NextResponse.json({ error: "api-football sync failed" }, { status: 502 });
     }
 
-    // ── 4. Cache the fixture ID back to the matches row ───────────────────────
-    if (!match.api_football_id && result.fixtureId) {
-        await admin
-            .from("matches")
-            .update({ api_football_id: result.fixtureId })
-            .eq("id", matchId);
+    // ── 4. Update match scores, status and cache fixture ID ───────────────────
+    {
+        const updates: Record<string, unknown> = {};
+        if (!match.api_football_id && result.fixtureId) updates.api_football_id = result.fixtureId;
+        if (result.homeScore !== null) updates.home_score = result.homeScore;
+        if (result.awayScore !== null) updates.away_score = result.awayScore;
+        // Only advance status forward (upcoming → live → finished), never backward
+        const rank = { upcoming: 0, live: 1, finished: 2 };
+        if (rank[result.matchStatus] > rank[match.status as keyof typeof rank]) {
+            updates.status = result.matchStatus;
+        }
+        if (Object.keys(updates).length > 0) {
+            await admin.from("matches").update(updates).eq("id", matchId);
+        }
     }
 
     // ── 5. Write events (replace all for this match) ──────────────────────────

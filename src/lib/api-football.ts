@@ -40,6 +40,15 @@ function mapEventType(type: string, detail: string): string | null {
     return null; // substitutions, VAR etc. — skip
 }
 
+// Map API-Football fixture status → our DB status
+function mapFixtureStatus(short: string): "upcoming" | "live" | "finished" {
+    const finished = ["FT", "AET", "PEN", "AWD", "WO"];
+    const live = ["1H", "HT", "2H", "ET", "P", "BT", "LIVE", "INT", "SUSP"];
+    if (finished.includes(short)) return "finished";
+    if (live.includes(short)) return "live";
+    return "upcoming";
+}
+
 function parseStat(val: string | number | null): number | null {
     if (val === null || val === undefined) return null;
     if (typeof val === "number") return val;
@@ -99,6 +108,9 @@ export interface SyncResult {
     fixtureId: number;
     events: SyncedEvent[];
     stats: SyncedStats | null;
+    homeScore: number | null;
+    awayScore: number | null;
+    matchStatus: "upcoming" | "live" | "finished";
 }
 
 // ─── Main sync function ───────────────────────────────────────────────────────
@@ -150,18 +162,26 @@ export async function syncMatchData(opts: {
         homeTeamApiId = found.teams.home.id;
     }
 
-    // ── Step 2: fetch events + stats + fixture (for homeTeamId) in parallel ──
+    // ── Step 2: fetch events + stats + fixture (always, for score/status/homeTeamId) ──
     const [evRes, stRes, fxRes] = await Promise.all([
         fetch(`${BASE}/fixtures/events?fixture=${fixtureId}`, { headers: h }),
         fetch(`${BASE}/fixtures/statistics?fixture=${fixtureId}`, { headers: h }),
-        homeTeamApiId == null
-            ? fetch(`${BASE}/fixtures?id=${fixtureId}`, { headers: h })
-            : Promise.resolve(null),
+        fetch(`${BASE}/fixtures?id=${fixtureId}`, { headers: h }),
     ]);
 
-    if (homeTeamApiId == null && fxRes?.ok) {
+    let fixtureHomeScore: number | null = null;
+    let fixtureAwayScore: number | null = null;
+    let fixtureStatusShort = "NS";
+
+    if (fxRes?.ok) {
         const d = await fxRes.json();
-        homeTeamApiId = d.response?.[0]?.teams?.home?.id ?? null;
+        const fx: ApiFixtureItem & { fixture: { status: { short: string } } } = d.response?.[0];
+        if (fx) {
+            if (homeTeamApiId == null) homeTeamApiId = fx.teams.home.id;
+            fixtureHomeScore = fx.goals.home;
+            fixtureAwayScore = fx.goals.away;
+            fixtureStatusShort = fx.fixture.status.short;
+        }
     }
 
     const evData = evRes.ok ? await evRes.json() : { response: [] };
@@ -206,5 +226,12 @@ export async function syncMatchData(opts: {
               }
             : null;
 
-    return { fixtureId, events, stats };
+    return {
+        fixtureId,
+        events,
+        stats,
+        homeScore: fixtureHomeScore,
+        awayScore: fixtureAwayScore,
+        matchStatus: mapFixtureStatus(fixtureStatusShort),
+    };
 }
