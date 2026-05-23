@@ -83,6 +83,15 @@ export function MatchDetailsPanel({ matchId, homeTeam, awayTeam, competitionType
         const supabase = createClient();
         let cancelled = false;
 
+        async function sync() {
+            // Fire-and-forget sync — no await, errors silently ignored
+            fetch(`/api/sync-match/${matchId}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ competitionType: competitionType ?? "" }),
+            }).catch(() => null);
+        }
+
         async function load() {
             setLoading(true);
             const [{ data: evts }, { data: st }] = await Promise.all([
@@ -105,19 +114,29 @@ export function MatchDetailsPanel({ matchId, homeTeam, awayTeam, competitionType
             }
         }
 
-        load();
+        async function syncThenLoad() {
+            // Sync first, then read updated data from DB
+            await fetch(`/api/sync-match/${matchId}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ competitionType: competitionType ?? "" }),
+            }).catch(() => null);
+            if (!cancelled) await load();
+        }
 
-        // Poll every 60 s during live matches
+        syncThenLoad();
+
+        // During live: re-sync every 60 s; after finished: one-shot sync is enough
         let interval: ReturnType<typeof setInterval> | null = null;
         if (isLive) {
-            interval = setInterval(load, 60_000);
+            interval = setInterval(() => { sync().then(load); }, 60_000);
         }
 
         return () => {
             cancelled = true;
             if (interval) clearInterval(interval);
         };
-    }, [matchId, isLive]);
+    }, [matchId, competitionType, isLive]);
 
     if (loading) {
         return (
