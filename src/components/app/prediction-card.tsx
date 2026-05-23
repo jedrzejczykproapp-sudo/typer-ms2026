@@ -213,9 +213,11 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
         return () => clearInterval(id);
     }, [isDbLive, isFinished, isTimeOver, match.match_date]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Background sync for live matches — pushes fresh score into DB so Realtime picks it up
+    // Sync with API for any started match — fires on mount + every 60s while live
+    // Directly applies status/score from response, no Realtime dependency needed
     useEffect(() => {
-        if (!isLive || isFinished) return;
+        const matchStarted = msSince > 0;
+        if (!matchStarted || isFinished) return;
         let cancelled = false;
 
         const doSync = async () => {
@@ -228,22 +230,18 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                 if (!res.ok || cancelled) return;
                 const data = await res.json();
                 if (cancelled) return;
-                // Directly apply status + score from sync response — no Realtime dependency
-                if (data?.matchStatus) {
-                    setLiveStatus(data.matchStatus);
-                }
+                if (data?.matchStatus) setLiveStatus(data.matchStatus);
                 if (data?.homeScore !== null && data?.homeScore !== undefined) {
                     setLiveScore({ home: data.homeScore, away: data.awayScore });
                 }
-            } catch {
-                // silent
-            }
+            } catch { /* silent */ }
         };
 
-        doSync();
-        const id = setInterval(doSync, 60_000);
-        return () => { cancelled = true; clearInterval(id); };
-    }, [isLive, isFinished, match.id, competitionType]); // eslint-disable-line react-hooks/exhaustive-deps
+        doSync(); // immediately on mount — gets real status from API
+        // While live: keep refreshing every 60s for score updates
+        const id = isLive ? setInterval(doSync, 60_000) : null;
+        return () => { cancelled = true; if (id) clearInterval(id); };
+    }, [isLive, isFinished, match.id, competitionType, msSince > 0]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Realtime subscription + 5 s fallback poll — instant score updates during live
     useEffect(() => {
