@@ -162,7 +162,7 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
     const [isClientStarted, setIsClientStarted] = useState(() =>
         !isFinished && matchInProgress(),
     );
-    const isLive = isDbLive || isClientStarted;
+    const isLive = !isFinished && (isDbLive || isClientStarted);
     const isLocked = isFinished || isLive;
 
     // Live state (minute + half + progress)
