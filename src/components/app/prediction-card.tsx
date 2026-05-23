@@ -153,17 +153,20 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
     const [saved, setSaved] = useState(false);
     const [isPending, startTransition] = useTransition();
 
-    // Client-side time detection: true from kick-off until ~130 min after start
-    // (covers 90 min + ~15 min halftime + ~25 min extra time buffer)
-    const matchInProgress = () => {
-        const elapsed = (Date.now() - new Date(match.match_date).getTime()) / 60_000;
-        return elapsed >= 0 && elapsed <= 130;
-    };
+    // Time-based derived values — no state, recomputed on each render/tick
+    const msKickoff = new Date(match.match_date).getTime();
+    const msSince = Date.now() - msKickoff;
+    const minSince = msSince / 60_000;
+
+    // Match window: 0–130 min → timer is shown; >150 min → definitely over
     const [isClientStarted, setIsClientStarted] = useState(() =>
-        !isFinished && matchInProgress(),
+        !isFinished && minSince >= 0 && minSince <= 130,
     );
-    const isLive = !isFinished && (isDbLive || isClientStarted);
-    const isLocked = isFinished || isLive;
+    // >150 min since kick-off: treat as finished regardless of DB status
+    const isTimeOver = !isFinished && minSince > 150;
+
+    const isLive = !isFinished && !isTimeOver && (isDbLive || isClientStarted);
+    const isLocked = isFinished || isTimeOver || isLive;
 
     // Live state (minute + half + progress)
     const [liveState, setLiveState] = useState(() =>
@@ -193,9 +196,9 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
         }
     }, [prediction?.updated_at]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Update live minute/progress every 30s; also detect when match time passes
+    // Update live minute/progress every 30s; detect when match time window passes
     useEffect(() => {
-        if (isFinished) return;
+        if (isFinished || isTimeOver) return;
         const startMs = new Date(match.match_date).getTime();
         const tick = () => {
             const elapsed = (Date.now() - startMs) / 60_000;
@@ -208,7 +211,7 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
         tick();
         const id = setInterval(tick, 30_000);
         return () => clearInterval(id);
-    }, [isDbLive, isFinished, match.match_date]);
+    }, [isDbLive, isFinished, isTimeOver, match.match_date]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Background sync for live matches — pushes fresh score into DB so Realtime picks it up
     useEffect(() => {
@@ -482,7 +485,7 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                             Trwa
                         </span>
                     )}
-                    {isFinished && (
+                    {(isFinished || isTimeOver) && (
                         <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-tertiary">
                             Zakończony
                         </span>
