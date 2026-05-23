@@ -157,8 +157,10 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
     const [isClientStarted, setIsClientStarted] = useState(() =>
         !isFinished && Date.now() >= new Date(match.match_date).getTime(),
     );
-    const isLive = isDbLive || isClientStarted;
-    const isLocked = isFinished || isLive;
+    // isLive: badge "Trwa" + timer only when DB explicitly says live
+    // isLocked: also blocks predictions once local clock passes match_date
+    const isLive = isDbLive;
+    const isLocked = isFinished || isDbLive || isClientStarted;
 
     // Live state (minute + half + progress)
     const [liveState, setLiveState] = useState(() =>
@@ -638,7 +640,7 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                             onClick={() => setPanel(panel === "szczegoly" ? null : "szczegoly")}
                             className="flex-1"
                         >
-                            Pokaż szczegóły
+                            Statystyki
                         </Button>
                         <Button
                             color="secondary"
@@ -647,7 +649,7 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                             onClick={() => setPanel(panel === "typy" ? null : "typy")}
                             className="flex-1"
                         >
-                            Pokaż typy
+                            Typy
                         </Button>
                     </div>
 
