@@ -213,18 +213,33 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
     // Background sync for live matches — pushes fresh score into DB so Realtime picks it up
     useEffect(() => {
         if (!isLive || isFinished) return;
+        let cancelled = false;
 
-        const doSync = () => {
-            fetch(`/api/sync-match/${match.id}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ competitionType: competitionType ?? "" }),
-            }).catch(() => null);
+        const doSync = async () => {
+            try {
+                const res = await fetch(`/api/sync-match/${match.id}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ competitionType: competitionType ?? "" }),
+                });
+                if (!res.ok || cancelled) return;
+                const data = await res.json();
+                if (cancelled) return;
+                // Directly apply status + score from sync response — no Realtime dependency
+                if (data?.matchStatus) {
+                    setLiveStatus(data.matchStatus);
+                }
+                if (data?.homeScore !== null && data?.homeScore !== undefined) {
+                    setLiveScore({ home: data.homeScore, away: data.awayScore });
+                }
+            } catch {
+                // silent
+            }
         };
 
-        doSync(); // natychmiastowy sync przy starcie
+        doSync();
         const id = setInterval(doSync, 60_000);
-        return () => clearInterval(id);
+        return () => { cancelled = true; clearInterval(id); };
     }, [isLive, isFinished, match.id, competitionType]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Realtime subscription + 5 s fallback poll — instant score updates during live

@@ -19,7 +19,7 @@ export async function POST(
     // ── 1. Load match row ──────────────────────────────────────────────────────
     const { data: match, error: matchErr } = await admin
         .from("matches")
-        .select("id, home_team, away_team, match_date, status, api_football_id")
+        .select("id, home_team, away_team, match_date, status, api_football_id, home_score, away_score")
         .eq("id", matchId)
         .single();
 
@@ -44,7 +44,8 @@ export async function POST(
         const age = Date.now() - new Date(existingSt.updated_at).getTime();
         const threshold = match.status === "finished" ? STALE_FINISHED_MS : STALE_LIVE_MS;
         if (age < threshold) {
-            return NextResponse.json({ skipped: "fresh", age });
+            // Return current DB status so client can still update its local state
+            return NextResponse.json({ skipped: "fresh", age, matchStatus: match.status, homeScore: match.home_score, awayScore: match.away_score });
         }
     }
 
@@ -103,5 +104,12 @@ export async function POST(
     );
     if (stErr) console.error("[sync] upsert stats error", stErr);
 
-    return NextResponse.json({ ok: true, events: result.events.length, stats: !!result.stats });
+    return NextResponse.json({
+        ok: true,
+        events: result.events.length,
+        stats: !!result.stats,
+        matchStatus: result.matchStatus,
+        homeScore: result.homeScore,
+        awayScore: result.awayScore,
+    });
 }
