@@ -1,15 +1,9 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { BarChart01, Trophy01, Users01 } from "@untitledui/icons";
+import { BarChart01, CalendarDate, Trophy01, Users01 } from "@untitledui/icons";
 import { Link as AriaLink } from "react-aria-components";
 import { cx } from "@/utils/cx";
-
-const navItems = [
-    { href: "/grupy", label: "Grupy", icon: Users01 },
-    { href: "/grupy/typowania", label: "Typowania", icon: BarChart01 },
-    { href: "/grupy/tabela", label: "Tabela", icon: Trophy01 },
-];
 
 export function BottomNav({ groupId }: { groupId?: string }) {
     const pathname = usePathname();
@@ -19,8 +13,12 @@ export function BottomNav({ groupId }: { groupId?: string }) {
               { href: "/grupy", label: "Grupy", icon: Users01 },
               { href: `/grupy/${groupId}?tab=typowania`, label: "Typowania", icon: BarChart01 },
               { href: `/grupy/${groupId}?tab=tabela`, label: "Tabela", icon: Trophy01 },
+              { href: "/mecze", label: "Mecze", icon: CalendarDate },
           ]
-        : [{ href: "/grupy", label: "Grupy", icon: Users01 }];
+        : [
+              { href: "/grupy", label: "Grupy", icon: Users01 },
+              { href: "/mecze", label: "Mecze", icon: CalendarDate },
+          ];
 
     return (
         <nav className="fixed right-0 bottom-0 left-0 z-40 border-t border-secondary bg-primary lg:hidden">
