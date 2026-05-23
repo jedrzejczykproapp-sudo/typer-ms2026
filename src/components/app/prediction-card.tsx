@@ -153,14 +153,17 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
     const [saved, setSaved] = useState(false);
     const [isPending, startTransition] = useTransition();
 
-    // Client-side time detection: lock predictions once match_date passes
+    // Client-side time detection: true from kick-off until ~130 min after start
+    // (covers 90 min + ~15 min halftime + ~25 min extra time buffer)
+    const matchInProgress = () => {
+        const elapsed = (Date.now() - new Date(match.match_date).getTime()) / 60_000;
+        return elapsed >= 0 && elapsed <= 130;
+    };
     const [isClientStarted, setIsClientStarted] = useState(() =>
-        !isFinished && Date.now() >= new Date(match.match_date).getTime(),
+        !isFinished && matchInProgress(),
     );
-    // isLive: badge "Trwa" + timer only when DB explicitly says live
-    // isLocked: also blocks predictions once local clock passes match_date
-    const isLive = isDbLive;
-    const isLocked = isFinished || isDbLive || isClientStarted;
+    const isLive = isDbLive || isClientStarted;
+    const isLocked = isFinished || isLive;
 
     // Live state (minute + half + progress)
     const [liveState, setLiveState] = useState(() =>
@@ -195,9 +198,10 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
         if (isFinished) return;
         const startMs = new Date(match.match_date).getTime();
         const tick = () => {
-            const started = Date.now() >= startMs;
-            setIsClientStarted(started);
-            if (started || isDbLive) {
+            const elapsed = (Date.now() - startMs) / 60_000;
+            const inProgress = elapsed >= 0 && elapsed <= 130;
+            setIsClientStarted(inProgress);
+            if (inProgress || isDbLive) {
                 setLiveState(calcLiveState(match.match_date));
             }
         };
