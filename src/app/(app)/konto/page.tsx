@@ -177,7 +177,7 @@ async function WydarzeniaTab({
             .gte("match_date", todayStr)
             .order("match_date", { ascending: true });
 
-        const FINISHED = ["FT", "AET", "PEN", "Finished"];
+        const FINISHED = ["FT", "AET", "PEN", "Finished", "finished"];
         zakladFixtures = ((fixtures ?? []) as ZakladFixtureRow[]).filter(
             (f) => !FINISHED.includes(f.match_status),
         );
