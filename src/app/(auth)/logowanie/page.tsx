@@ -12,7 +12,12 @@ function LogowanieForm() {
     const [isLoading, setIsLoading] = useState(false);
     const searchParams = useSearchParams();
     const kod = searchParams.get("kod");
-    const redirectTo = kod ? `/dolacz?kod=${encodeURIComponent(kod)}` : null;
+    const kodZaklad = searchParams.get("kod-zaklad");
+    const redirectTo = kodZaklad
+        ? `/dolacz-zaklad?kod=${encodeURIComponent(kodZaklad)}`
+        : kod
+          ? `/dolacz?kod=${encodeURIComponent(kod)}`
+          : null;
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
@@ -30,7 +35,7 @@ function LogowanieForm() {
             <div className="flex flex-col items-center gap-4 text-center">
                 <Logo height={24} className="text-primary" />
                 <p className="text-sm text-tertiary">
-                    {kod ? "Zaloguj się, aby dołączyć do grupy" : "Zaloguj się do swojego konta"}
+                    {kodZaklad ? "Zaloguj się, aby dołączyć do zakładu" : kod ? "Zaloguj się, aby dołączyć do grupy" : "Zaloguj się do swojego konta"}
                 </p>
             </div>
 
@@ -67,7 +72,7 @@ function LogowanieForm() {
             <p className="text-sm text-tertiary">
                 Nie masz konta?{" "}
                 <Button
-                    href={kod ? `/rejestracja?kod=${encodeURIComponent(kod)}` : "/rejestracja"}
+                    href={kodZaklad ? `/rejestracja?kod-zaklad=${encodeURIComponent(kodZaklad)}` : kod ? `/rejestracja?kod=${encodeURIComponent(kod)}` : "/rejestracja"}
                     color="link-color"
                     size="sm"
                 >

@@ -12,7 +12,12 @@ function RejestracjaForm() {
     const [isLoading, setIsLoading] = useState(false);
     const searchParams = useSearchParams();
     const kod = searchParams.get("kod");
-    const redirectTo = kod ? `/dolacz?kod=${encodeURIComponent(kod)}` : null;
+    const kodZaklad = searchParams.get("kod-zaklad");
+    const redirectTo = kodZaklad
+        ? `/dolacz-zaklad?kod=${encodeURIComponent(kodZaklad)}`
+        : kod
+          ? `/dolacz?kod=${encodeURIComponent(kod)}`
+          : null;
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
@@ -41,7 +46,7 @@ function RejestracjaForm() {
             <div className="flex flex-col items-center gap-4 text-center">
                 <Logo height={24} className="text-primary" />
                 <p className="text-sm text-tertiary">
-                    {kod ? "Zarejestruj się, aby dołączyć do grupy" : "Dołącz do Typera MŚ 2026"}
+                    {kodZaklad ? "Zarejestruj się, aby dołączyć do zakładu" : kod ? "Zarejestruj się, aby dołączyć do grupy" : "Dołącz do Typera MŚ 2026"}
                 </p>
             </div>
 
@@ -93,7 +98,7 @@ function RejestracjaForm() {
             <p className="text-sm text-tertiary">
                 Masz już konto?{" "}
                 <Button
-                    href={kod ? `/logowanie?kod=${encodeURIComponent(kod)}` : "/logowanie"}
+                    href={kodZaklad ? `/logowanie?kod-zaklad=${encodeURIComponent(kodZaklad)}` : kod ? `/logowanie?kod=${encodeURIComponent(kod)}` : "/logowanie"}
                     color="link-color"
                     size="sm"
                 >
