@@ -310,19 +310,28 @@ function MemberPredsPanel({ preds, loading, userId, homeScore, awayScore, isLive
                                 {mp.display_name ?? "Anonim"}
                                 {isMe && <span className="ml-1 font-normal text-tertiary">(Ty)</span>}
                             </span>
-                            <span className="shrink-0 text-xs font-semibold tabular-nums text-secondary">
-                                {mp.predicted_home}:{mp.predicted_away}
-                            </span>
-                            {pts !== null && (
+                            {/* Score + points as a single unit */}
+                            <div className="flex shrink-0 items-center gap-1.5">
                                 <span className={cx(
-                                    "shrink-0 rounded-full px-1.5 py-0.5 text-xs font-bold tabular-nums",
-                                    pts === 3 ? "bg-success-primary text-success-primary"
-                                        : pts === 1 ? "bg-brand-primary text-brand-primary"
-                                            : "bg-secondary text-quaternary",
+                                    "text-xs font-semibold tabular-nums",
+                                    pts === 3 ? "text-success-primary"
+                                        : pts === 1 ? "text-brand-primary"
+                                            : pts === 0 ? "text-tertiary"
+                                                : "text-secondary",
                                 )}>
-                                    {pts} pkt
+                                    {mp.predicted_home}:{mp.predicted_away}
                                 </span>
-                            )}
+                                {pts !== null && (
+                                    <span className={cx(
+                                        "rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums",
+                                        pts === 3 ? "bg-success-primary text-success-primary"
+                                            : pts === 1 ? "bg-brand-primary text-brand-primary"
+                                                : "bg-secondary text-quaternary",
+                                    )}>
+                                        {pts} pkt
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     );
                 })
@@ -733,8 +742,8 @@ export function ZakladFixtureCard({ fixture, zakladId, userId, myPrediction, myP
                             preds={memberPreds}
                             loading={loadingPreds}
                             userId={userId}
-                            homeScore={liveScore.home}
-                            awayScore={liveScore.away}
+                            homeScore={liveScore.home !== "" ? liveScore.home : "0"}
+                            awayScore={liveScore.away !== "" ? liveScore.away : "0"}
                             isLive={isLive}
                             isFinished={isFinished}
                         />
