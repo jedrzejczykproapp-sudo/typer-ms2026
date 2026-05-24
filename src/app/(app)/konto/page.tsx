@@ -12,6 +12,7 @@ import { CreateGroupModal } from "@/components/app/group-modals";
 import { JoinGroupModal } from "@/components/app/group-modals";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { KontoTabPanel } from "./tab-panel";
+import { ZakladFixtureCard } from "@/app/(app)/zaklady/[id]/zaklad-fixture-card";
 import type { Match } from "@/types/database";
 
 const stageOrder = ["group", "round_of_32", "round_of_16", "quarter", "semi", "third_place", "final"] as const;
@@ -100,7 +101,7 @@ export default async function KontoPage({
             <KontoTabPanel
                 defaultTab={tab}
                 hasTodayMatches={hasTodayMatches}
-                wydarzeniaContent={<WydarzeniaTab groups={groups} />}
+                wydarzeniaContent={<WydarzeniaTab groups={groups} userId={user.id} />}
                 zakladyContent={<ZakladyTab userId={user.id} />}
                 grupyContent={<GrupyTab groups={groups} />}
                 statystykiContent={<StatystykiTab userId={user.id} groups={groups} />}
@@ -123,39 +124,144 @@ function dateLabel(dateStr: string): string {
         .replace(".", "");
 }
 
+type ZakladFixtureRow = {
+    id: string;
+    zaklad_id: string;
+    league_name: string;
+    league_flag: string;
+    match_date: string;
+    home_name: string;
+    home_badge: string;
+    home_position: number | null;
+    away_name: string;
+    away_badge: string;
+    away_position: number | null;
+    home_score: string;
+    away_score: string;
+    match_status: string;
+    odds_home: number | null;
+    odds_draw: number | null;
+    odds_away: number | null;
+    venue: string | null;
+};
+
 async function WydarzeniaTab({
     groups,
+    userId,
 }: {
     groups: { id: string; name: string; avatar_url: string | null; competition_type: string }[];
+    userId: string;
 }) {
-    // ── No groups at all ──────────────────────────────────────────────────────
-    if (!groups.length) {
-        return <EmptyState icon={Users01 as Parameters<typeof FeaturedIcon>[0]["icon"]} title="Brak grup" description="Utwórz grupę lub dołącz do istniejącej, aby zacząć typować." />;
+    const supabase = await createClient();
+
+    const todayStart = new Date();
+    todayStart.setUTCHours(0, 0, 0, 0);
+    const todayStr = todayStart.toISOString().slice(0, 10) + " 00:00:00";
+
+    // ── Fetch user's zaklad fixtures (upcoming/live from active zakłady) ──────
+    const { data: memberRows } = await supabase
+        .from("zaklad_members")
+        .select("zaklad_id, zaklady(id, status)")
+        .eq("user_id", userId);
+
+    const activeZakladIds = (memberRows ?? [])
+        .filter((m) => (m.zaklady as unknown as { status: string } | null)?.status === "active")
+        .map((m) => m.zaklad_id);
+
+    let zakladFixtures: ZakladFixtureRow[] = [];
+    let predByFixtureId = new Map<string, { home: number; away: number; points: number | null }>();
+
+    if (activeZakladIds.length) {
+        const { data: fixtures } = await supabase
+            .from("zaklad_fixtures")
+            .select("id, zaklad_id, league_name, league_flag, match_date, home_name, home_badge, home_position, away_name, away_badge, away_position, home_score, away_score, match_status, odds_home, odds_draw, odds_away, venue")
+            .in("zaklad_id", activeZakladIds)
+            .gte("match_date", todayStr)
+            .order("match_date", { ascending: true });
+
+        const FINISHED = ["FT", "AET", "PEN", "Finished"];
+        zakladFixtures = ((fixtures ?? []) as ZakladFixtureRow[]).filter(
+            (f) => !FINISHED.includes(f.match_status),
+        );
+
+        const fixtureIds = zakladFixtures.map((f) => f.id);
+        if (fixtureIds.length) {
+            const { data: preds } = await supabase
+                .from("zaklad_predictions")
+                .select("fixture_id, predicted_home, predicted_away, points")
+                .eq("user_id", userId)
+                .in("fixture_id", fixtureIds);
+
+            predByFixtureId = new Map(
+                (preds ?? []).map((p) => [
+                    p.fixture_id,
+                    { home: p.predicted_home, away: p.predicted_away, points: p.points as number | null },
+                ]),
+            );
+        }
     }
 
-    const allEntries = await getAllGroupsMatchesWithPredictions(groups);
+    // ── Fetch group matches ───────────────────────────────────────────────────
+    const groupEntries = groups.length ? await getAllGroupsMatchesWithPredictions(groups) : [];
 
-    // ── No upcoming matches ───────────────────────────────────────────────────
-    if (!allEntries.length) {
-        return <EmptyState icon={CalendarCheck01 as Parameters<typeof FeaturedIcon>[0]["icon"]} title="Brak nadchodzących meczów" description="Zaproś znajomych i typujcie razem!" />;
+    // ── Empty state ───────────────────────────────────────────────────────────
+    if (!groupEntries.length && !zakladFixtures.length) {
+        return (
+            <EmptyState
+                icon={CalendarCheck01 as Parameters<typeof FeaturedIcon>[0]["icon"]}
+                title="Brak nadchodzących meczów"
+                description="Dołącz do grupy lub zakładu, aby zacząć typować!"
+            />
+        );
     }
 
-    // Fetch odds for each unique competition type
+    // ── Fetch odds for group competition types ────────────────────────────────
     const uniqueCts = [...new Set(groups.map((g) => g.competition_type))];
-    const oddsMaps = await Promise.all(uniqueCts.map((ct) => getOdds(ct)));
+    const oddsMaps = uniqueCts.length
+        ? await Promise.all(uniqueCts.map((ct) => getOdds(ct)))
+        : [];
     const combinedOdds = new Map<string, import("@/lib/odds").MatchOdds>();
     for (const m of oddsMaps) for (const [k, v] of m) combinedOdds.set(k, v);
 
-    // Group by date label, preserving order (allEntries already sorted by match_date)
-    const sectionMap = new Map<string, typeof allEntries>();
-    const sectionDateMap = new Map<string, string>(); // label → YYYY-MM-DD for sort
-    for (const entry of allEntries) {
-        const label = dateLabel(entry.match.match_date);
+    // ── Merge & sort all entries by match_date ────────────────────────────────
+    type GroupItem = { kind: "group"; sortKey: string; entry: (typeof groupEntries)[0] };
+    type ZakladItem = {
+        kind: "zaklad";
+        sortKey: string;
+        fixture: ZakladFixtureRow;
+        prediction: { home: number; away: number } | null;
+        points: number | null;
+    };
+    type AnyItem = GroupItem | ZakladItem;
+
+    const allItems: AnyItem[] = [
+        ...groupEntries.map((e) => ({
+            kind: "group" as const,
+            sortKey: e.match.match_date,
+            entry: e,
+        })),
+        ...zakladFixtures.map((f) => {
+            const pred = predByFixtureId.get(f.id);
+            return {
+                kind: "zaklad" as const,
+                sortKey: f.match_date.replace(" ", "T"),
+                fixture: f,
+                prediction: pred ? { home: pred.home, away: pred.away } : null,
+                points: pred?.points ?? null,
+            };
+        }),
+    ].sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+
+    // ── Group by day ──────────────────────────────────────────────────────────
+    const sectionMap = new Map<string, AnyItem[]>();
+    const sectionDateMap = new Map<string, string>();
+    for (const item of allItems) {
+        const label = dateLabel(item.sortKey.slice(0, 10));
         if (!sectionMap.has(label)) {
             sectionMap.set(label, []);
-            sectionDateMap.set(label, entry.match.match_date.slice(0, 10));
+            sectionDateMap.set(label, item.sortKey.slice(0, 10));
         }
-        sectionMap.get(label)!.push(entry);
+        sectionMap.get(label)!.push(item);
     }
 
     const sortedLabels = [...sectionMap.keys()].sort((a, b) =>
@@ -164,27 +270,36 @@ async function WydarzeniaTab({
 
     return (
         <div className="flex flex-col gap-8">
-            {sortedLabels.map((label) => {
-                const entries = sectionMap.get(label)!;
-                return (
-                    <section key={label}>
-                        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-tertiary">{label}</h2>
-                        <div className="flex flex-col gap-3">
-                            {entries.map((entry) => (
+            {sortedLabels.map((label) => (
+                <section key={label}>
+                    <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-tertiary">{label}</h2>
+                    <div className="flex flex-col gap-3">
+                        {sectionMap.get(label)!.map((item) =>
+                            item.kind === "group" ? (
                                 <PredictionCard
-                                    key={`${entry.match.id}-${entry.groupId}`}
-                                    match={entry.match}
-                                    groupId={entry.groupId}
-                                    groupName={groups.length > 1 ? entry.groupName : undefined}
-                                    prediction={entry.prediction}
-                                    odds={combinedOdds.get(`${entry.match.home_team}|${entry.match.away_team}`)}
-                                    competitionType={entry.competitionType}
+                                    key={`g-${item.entry.match.id}-${item.entry.groupId}`}
+                                    match={item.entry.match}
+                                    groupId={item.entry.groupId}
+                                    groupName={groups.length > 1 ? item.entry.groupName : undefined}
+                                    prediction={item.entry.prediction}
+                                    odds={combinedOdds.get(
+                                        `${item.entry.match.home_team}|${item.entry.match.away_team}`,
+                                    )}
+                                    competitionType={item.entry.competitionType}
                                 />
-                            ))}
-                        </div>
-                    </section>
-                );
-            })}
+                            ) : (
+                                <ZakladFixtureCard
+                                    key={`z-${item.fixture.id}`}
+                                    fixture={item.fixture}
+                                    zakladId={item.fixture.zaklad_id}
+                                    myPrediction={item.prediction}
+                                    myPoints={item.points}
+                                />
+                            ),
+                        )}
+                    </div>
+                </section>
+            ))}
         </div>
     );
 }

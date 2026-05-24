@@ -96,18 +96,17 @@ export function AppNav({ profileSrc, profileInits = "?" }: Props) {
                         className="flex flex-1 flex-col items-center gap-1 py-2 outline-none"
                     >
                         {profileSrc || profileInits !== "?" ? (
-                            <div className={cx(
-                                "rounded-full p-0.5 transition duration-100",
-                                isProfileActive
-                                    ? "ring-2 ring-fg-brand-primary"
-                                    : "ring-2 ring-transparent",
-                            )}>
-                                <Avatar
-                                    src={profileSrc ?? undefined}
-                                    initials={profileInits}
-                                    size="xs"
-                                />
-                            </div>
+                            <Avatar
+                                src={profileSrc ?? undefined}
+                                initials={profileInits}
+                                size="xs"
+                                className={cx(
+                                    "transition duration-100",
+                                    isProfileActive
+                                        ? "ring-2 ring-fg-brand-primary ring-offset-1"
+                                        : "",
+                                )}
+                            />
                         ) : (
                             <User01
                                 className={cx(

@@ -30,7 +30,7 @@ interface Props {
     zakladId: string;
     myPrediction: { home: number; away: number } | null;
     myPoints: number | null;
-    onPredict: (home: number, away: number) => void;
+    onPredict?: (home: number, away: number) => void;
 }
 
 function TeamLogo({ badge, name }: { badge: string; name: string }) {
@@ -195,14 +195,14 @@ export function ZakladFixtureCard({ fixture, zakladId, myPrediction, myPoints, o
     function handleHomeChange(v: number) {
         setHomeScore(v);
         latestScores.current = { home: v, away: latestScores.current.away };
-        onPredict(v, latestScores.current.away);
+        onPredict?.(v, latestScores.current.away);
         scheduleAutoSave(v, latestScores.current.away);
     }
 
     function handleAwayChange(v: number) {
         setAwayScore(v);
         latestScores.current = { home: latestScores.current.home, away: v };
-        onPredict(latestScores.current.home, v);
+        onPredict?.(latestScores.current.home, v);
         scheduleAutoSave(latestScores.current.home, v);
     }
 
