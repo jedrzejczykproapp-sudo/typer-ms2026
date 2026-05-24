@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { syncMatchData } from "@/lib/api-football";
 
 const BASE = "https://apiv3.apifootball.com/";
 
@@ -133,6 +134,35 @@ export async function GET(req: NextRequest) {
         }
     }
 
+    // ── Method C: actual syncMatchData call (what the sync-fixture route uses) ─
+    let syncResult: unknown = null;
+    try {
+        const result = await syncMatchData({
+            competitionType: "",
+            leagueId: (fixture.league_id as string | null) ?? undefined,
+            matchDate: fixture.match_date as string,
+            homeTeam: fixture.home_name as string,
+            awayTeam: fixture.away_name as string,
+            cachedFixtureId: isNaN(apifootball_id) ? null : apifootball_id,
+        });
+        if (result) {
+            syncResult = {
+                ok: true,
+                matchStatus: result.matchStatus,
+                homeScore: result.homeScore,
+                awayScore: result.awayScore,
+                eventsCount: result.events.length,
+                events: result.events,
+                stats: result.stats,
+                statsIsNull: result.stats === null,
+            };
+        } else {
+            syncResult = { ok: false, error: "syncMatchData returned null" };
+        }
+    } catch (e) {
+        syncResult = { ok: false, error: String(e) };
+    }
+
     return NextResponse.json({
         fixture: {
             id: fixture.id,
@@ -154,5 +184,6 @@ export async function GET(req: NextRequest) {
             status: matchIdStatus,
             result: matchIdResult,
         },
+        methodC_syncMatchData: syncResult,
     });
 }
