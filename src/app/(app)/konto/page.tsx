@@ -408,17 +408,19 @@ async function ZakladyTab({ userId }: { userId: string }) {
 async function StatystykiTab({ userId, groups }: { userId: string; groups: { id: string }[] }) {
     const supabase = await createClient();
 
-    const { data: predictions } = await supabase
-        .from("predictions")
-        .select("points")
-        .eq("user_id", userId);
+    // Fetch group predictions + zaklad predictions in parallel
+    const [{ data: groupPreds }, { data: zakladPreds }] = await Promise.all([
+        supabase.from("predictions").select("points").eq("user_id", userId),
+        supabase.from("zaklad_predictions").select("points").eq("user_id", userId),
+    ]);
 
-    const preds = predictions ?? [];
-    const total   = preds.length;
-    const exact   = preds.filter((p) => p.points === 3).length;
-    const correct = preds.filter((p) => p.points === 1).length;
-    const wrong   = preds.filter((p) => p.points === 0).length;
-    const pending = preds.filter((p) => p.points === null).length;
+    const allPreds = [...(groupPreds ?? []), ...(zakladPreds ?? [])];
+
+    const total   = allPreds.length;
+    const exact   = allPreds.filter((p) => p.points === 3).length;
+    const correct = allPreds.filter((p) => p.points === 1).length;
+    const wrong   = allPreds.filter((p) => p.points === 0).length;
+    const pending = allPreds.filter((p) => p.points === null).length;
 
     const stats: UserStats = {
         total,
@@ -426,7 +428,7 @@ async function StatystykiTab({ userId, groups }: { userId: string; groups: { id:
         correct,
         wrong,
         pending,
-        totalPoints: exact * 3 + correct * 1,
+        totalPoints: allPreds.reduce((sum, p) => sum + (p.points ?? 0), 0),
         groups: groups.length,
     };
 
