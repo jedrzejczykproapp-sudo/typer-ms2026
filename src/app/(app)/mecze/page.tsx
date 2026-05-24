@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { FixtureCard } from "@/components/app/fixture-card";
 import type { Fixture } from "@/app/api/top-fixtures/route";
 import { TOP_LEAGUES } from "@/lib/top-leagues";
-import { ShoppingCart01, X } from "@untitledui/icons";
+import { X } from "@untitledui/icons";
 
 function formatDay(dateStr: string) {
     const d = new Date(dateStr.replace(" ", "T"));
@@ -181,27 +181,24 @@ export default function MeczePage() {
             {selected.size > 0 && (
                 <div className="fixed bottom-16 left-0 right-0 z-50 px-4 pb-2 lg:bottom-6 lg:left-1/2 lg:-translate-x-1/2 lg:max-w-2xl lg:px-4">
                     <div className="flex items-center gap-3 rounded-2xl border border-secondary bg-primary p-3 shadow-lg">
-                        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-secondary">
-                            <ShoppingCart01 className="size-5 text-fg-brand-primary" />
-                        </div>
                         <div className="min-w-0 flex-1">
+                            <p className="text-xs text-tertiary">Wybrano do zakładu:</p>
                             <p className="text-sm font-semibold text-primary">
                                 {selected.size} {selected.size === 1 ? "mecz" : selected.size < 5 ? "mecze" : "meczów"}
                             </p>
-                            <p className="text-xs text-tertiary">wybrano do zakładu</p>
                         </div>
-                        <button
-                            onClick={clearCart}
-                            className="flex size-8 items-center justify-center rounded-lg text-tertiary transition hover:bg-secondary"
-                        >
-                            <X className="size-4" />
-                        </button>
                         <button
                             onClick={createZaklad}
                             disabled={creating}
-                            className="shrink-0 rounded-xl bg-brand-solid px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+                            className="shrink-0 rounded-xl bg-brand-solid px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
                         >
                             {creating ? "Tworzę…" : "Utwórz zakład"}
+                        </button>
+                        <button
+                            onClick={clearCart}
+                            className="flex shrink-0 items-center justify-center rounded-xl border border-secondary px-4 py-2.5 text-secondary transition hover:bg-secondary"
+                        >
+                            <X className="size-5" />
                         </button>
                     </div>
                     {createError && (
