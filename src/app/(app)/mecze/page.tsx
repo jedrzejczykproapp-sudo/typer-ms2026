@@ -154,7 +154,7 @@ export default function MeczePage() {
 
             {grouped && grouped.size === 0 && (
                 <p className="rounded-xl border border-secondary bg-primary p-6 text-center text-sm text-tertiary">
-                    Brak nadchodzących meczów w najbliższych 7 dniach.
+                    Brak nadchodzących meczów w najbliższych 30 dniach.
                 </p>
             )}
 

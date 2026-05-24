@@ -115,7 +115,7 @@ export async function GET() {
 
     const today = new Date();
     const from = today.toISOString().slice(0, 10);
-    const to = new Date(today.getTime() + 7 * 86_400_000).toISOString().slice(0, 10);
+    const to = new Date(today.getTime() + 30 * 86_400_000).toISOString().slice(0, 10);
 
     // Fetch matches + standings + odds for all leagues in parallel
     const results = await Promise.allSettled(
