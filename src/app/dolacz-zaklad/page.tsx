@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { Logo } from "@/components/app/logo";
 import { Button } from "@/components/base/buttons/button";
 import { JoinZakladClient } from "./join-zaklad-client";
@@ -16,8 +17,10 @@ export default async function DolaczZakladPage({ searchParams }: Props) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    // Fetch zakład info by invite code
-    const { data: zaklad } = await supabase
+    // Admin client bypasses RLS — pozwala niezalogowanym użytkownikom
+    // zobaczyć zakład po kodzie zaproszenia
+    const admin = createAdminClient();
+    const { data: zaklad } = await admin
         .from("zaklady")
         .select("id, number, zaklad_fixtures(id), zaklad_members(user_id)")
         .eq("invite_code", kod.trim())
@@ -31,11 +34,6 @@ export default async function DolaczZakladPage({ searchParams }: Props) {
         <div className="flex min-h-dvh items-center justify-center bg-secondary px-4 py-12">
             <div className="flex w-full max-w-sm flex-col items-center gap-8">
                 <Logo height={24} className="text-primary" />
-
-                {/* Icon */}
-                <div className="flex size-20 items-center justify-center rounded-2xl bg-brand-secondary text-4xl shadow-sm ring-1 ring-secondary">
-                    🎯
-                </div>
 
                 {/* Header */}
                 <div className="flex flex-col items-center gap-1 text-center">

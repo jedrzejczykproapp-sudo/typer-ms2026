@@ -88,16 +88,12 @@ export default async function DolaczPage({ searchParams }: Props) {
                 <Logo height={24} className="text-primary" />
 
                 {/* Avatar grupy */}
-                {group?.avatar_url ? (
+                {group?.avatar_url && (
                     <img
                         src={group.avatar_url}
                         alt={group.name}
                         className="size-20 rounded-2xl object-cover shadow-lg ring-1 ring-secondary"
                     />
-                ) : (
-                    <div className="flex size-20 items-center justify-center rounded-2xl bg-brand-secondary text-4xl shadow-sm ring-1 ring-secondary">
-                        ⚽
-                    </div>
                 )}
 
                 {/* Nagłówek */}
