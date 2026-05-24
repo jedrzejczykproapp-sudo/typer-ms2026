@@ -20,6 +20,32 @@ function dateStr(d: Date) {
     return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
 }
 
+// PATCH /api/admin/add-fixtures?match_id=X&league_name=Y&league_flag=Z&league_id=W
+export async function PATCH(req: NextRequest) {
+    const admin = createAdminClient();
+    const { searchParams } = req.nextUrl;
+    const matchId    = searchParams.get("match_id");
+    const leagueName = searchParams.get("league_name");
+    const leagueFlag = searchParams.get("league_flag");
+    const leagueId   = searchParams.get("league_id");
+
+    if (!matchId) return NextResponse.json({ error: "match_id required" }, { status: 400 });
+
+    const updates: Record<string, string> = {};
+    if (leagueName) updates.league_name = leagueName;
+    if (leagueFlag) updates.league_flag = leagueFlag;
+    if (leagueId)   updates.league_id   = leagueId;
+
+    const { data, error } = await admin
+        .from("zaklad_fixtures")
+        .update(updates)
+        .eq("match_id", matchId)
+        .select("id, match_id, league_name, league_flag, league_id, home_name, away_name");
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ updated: data });
+}
+
 export async function GET(req: NextRequest) {
     const key = process.env.APIFOOTBALL_API_KEY;
     if (!key) return NextResponse.json({ error: "APIFOOTBALL_API_KEY not set" }, { status: 500 });
