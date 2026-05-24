@@ -408,19 +408,72 @@ async function ZakladyTab({ userId }: { userId: string }) {
 async function StatystykiTab({ userId, groups }: { userId: string; groups: { id: string }[] }) {
     const supabase = await createClient();
 
-    // Fetch group predictions + zaklad predictions in parallel
-    const [{ data: groupPreds }, { data: zakladPreds }] = await Promise.all([
-        supabase.from("predictions").select("points").eq("user_id", userId),
-        supabase.from("zaklad_predictions").select("points").eq("user_id", userId),
+    // ── 1. Fetch all predictions (groups + zakłady) for this user ─────────────
+    const [
+        { data: groupPreds },
+        { data: zakladPreds },
+        { data: zakladMemberships },
+    ] = await Promise.all([
+        supabase.from("predictions").select("points, group_id").eq("user_id", userId),
+        supabase.from("zaklad_predictions").select("points, zaklad_id, fixture_id").eq("user_id", userId),
+        supabase.from("zaklad_members").select("zaklad_id").eq("user_id", userId),
     ]);
 
     const allPreds = [...(groupPreds ?? []), ...(zakladPreds ?? [])];
-
     const total   = allPreds.length;
     const exact   = allPreds.filter((p) => p.points === 3).length;
     const correct = allPreds.filter((p) => p.points === 1).length;
     const wrong   = allPreds.filter((p) => p.points === 0).length;
     const pending = allPreds.filter((p) => p.points === null).length;
+    const totalPoints = allPreds.reduce((sum, p) => sum + (p.points ?? 0), 0);
+
+    // ── 2. Wygrane grupy ──────────────────────────────────────────────────────
+    // For each group the user belongs to, check if they have the highest points
+    let groupWins = 0;
+    if (groups.length > 0) {
+        const groupIds = groups.map((g) => g.id);
+        const { data: allGroupPreds } = await supabase
+            .from("predictions")
+            .select("group_id, user_id, points")
+            .in("group_id", groupIds)
+            .not("points", "is", null);
+
+        // Sum points per group per user
+        const groupTotals = new Map<string, Map<string, number>>();
+        for (const p of allGroupPreds ?? []) {
+            if (!groupTotals.has(p.group_id)) groupTotals.set(p.group_id, new Map());
+            const m = groupTotals.get(p.group_id)!;
+            m.set(p.user_id, (m.get(p.user_id) ?? 0) + (p.points ?? 0));
+        }
+        for (const [, userMap] of groupTotals) {
+            const maxPts = Math.max(...userMap.values());
+            const userPts = userMap.get(userId) ?? 0;
+            if (maxPts > 0 && userPts === maxPts) groupWins++;
+        }
+    }
+
+    // ── 3. Wygrane zakłady ────────────────────────────────────────────────────
+    let zakladWins = 0;
+    const zakladIds = (zakladMemberships ?? []).map((m) => m.zaklad_id);
+    if (zakladIds.length > 0) {
+        const { data: allZakladPreds } = await supabase
+            .from("zaklad_predictions")
+            .select("zaklad_id, user_id, points")
+            .in("zaklad_id", zakladIds)
+            .not("points", "is", null);
+
+        const zakladTotals = new Map<string, Map<string, number>>();
+        for (const p of allZakladPreds ?? []) {
+            if (!zakladTotals.has(p.zaklad_id)) zakladTotals.set(p.zaklad_id, new Map());
+            const m = zakladTotals.get(p.zaklad_id)!;
+            m.set(p.user_id, (m.get(p.user_id) ?? 0) + (p.points ?? 0));
+        }
+        for (const [, userMap] of zakladTotals) {
+            const maxPts = Math.max(...userMap.values());
+            const userPts = userMap.get(userId) ?? 0;
+            if (maxPts > 0 && userPts === maxPts) zakladWins++;
+        }
+    }
 
     const stats: UserStats = {
         total,
@@ -428,8 +481,10 @@ async function StatystykiTab({ userId, groups }: { userId: string; groups: { id:
         correct,
         wrong,
         pending,
-        totalPoints: allPreds.reduce((sum, p) => sum + (p.points ?? 0), 0),
+        totalPoints,
         groups: groups.length,
+        groupWins,
+        zakladWins,
     };
 
     return <StatsDashboard stats={stats} />;

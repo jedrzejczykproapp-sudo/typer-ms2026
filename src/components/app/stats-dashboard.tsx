@@ -77,6 +77,27 @@ export interface UserStats {
     pending: number;
     totalPoints: number;
     groups: number;
+    groupWins: number;
+    zakladWins: number;
+}
+
+// ─── Win tile ─────────────────────────────────────────────────────────────────
+
+function WinTile({ label, sublabel, value, delay }: { label: string; sublabel: string; value: number; delay: number }) {
+    return (
+        <div className="flex flex-col gap-3 rounded-2xl border border-secondary bg-primary p-5">
+            <div className="flex size-9 items-center justify-center rounded-xl bg-warning-primary">
+                <Trophy01 className="size-5 text-warning-primary" />
+            </div>
+            <p className="text-3xl font-bold tabular-nums text-primary">
+                <AnimatedNumber value={value} delay={delay} />
+            </p>
+            <div>
+                <p className="text-xs font-semibold text-primary">{label}</p>
+                <p className="text-[11px] text-tertiary">{sublabel}</p>
+            </div>
+        </div>
+    );
 }
 
 // ─── Stat tile ────────────────────────────────────────────────────────────────
@@ -174,10 +195,16 @@ export function StatsDashboard({ stats }: { stats: UserStats }) {
                 />
             </div>
 
-            {/* ── 4. Stat tiles ────────────────────────────────────────────── */}
+            {/* ── 4. Win tiles ─────────────────────────────────────────────── */}
             <div className="grid grid-cols-2 gap-3">
-                <StatTile label="Wszystkie typy" value={stats.total}   icon={BarChart01} delay={0}   />
-                <StatTile label="Typy oczekujące" value={stats.pending} icon={Target01}   delay={80}  />
+                <WinTile label="Wygrane rozgrywki" sublabel="grupy" value={stats.groupWins}  delay={300} />
+                <WinTile label="Wygrane zakłady"   sublabel="zakłady" value={stats.zakladWins} delay={400} />
+            </div>
+
+            {/* ── 5. Stat tiles ────────────────────────────────────────────── */}
+            <div className="grid grid-cols-2 gap-3">
+                <StatTile label="Wszystkie typy"  value={stats.total}   icon={BarChart01} delay={0}   />
+                <StatTile label="Oczekujące typy" value={stats.pending} icon={Target01}   delay={80}  />
                 <StatTile label="Dokładne wyniki" value={stats.exact}   icon={Target01}   delay={160} />
                 <StatTile label="Grupy"           value={stats.groups}  icon={Users01}    delay={240} />
             </div>
