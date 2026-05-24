@@ -234,7 +234,7 @@ export function ZakladDetail({ zaklad, userId, predictions: initialPredictions }
                                 : "border-secondary/40 font-medium text-tertiary hover:text-secondary"
                         }`}
                     >
-                        {t === "typowania" ? "Typowania" : "Ranking"}
+                        {t === "typowania" ? "Wydarzenia" : "Ranking"}
                     </button>
                 ))}
             </div>
