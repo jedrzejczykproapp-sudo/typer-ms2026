@@ -712,17 +712,16 @@ export function ZakladFixtureCard({ fixture, zakladId, userId, myPrediction, myP
                 )
             )}
 
-            {/* Action buttons — Statystyki (started only) + Typy (always) */}
+            {/* Action buttons — Statystyki + Typy (started only) */}
+            {isStarted && (
             <div className="flex flex-col gap-2">
                 <div className="flex gap-2">
-                    {isStarted && (
-                        <Button color="secondary" size="sm"
-                            iconTrailing={panel === "szczegoly" ? ChevronUp : ChevronDown}
-                            onClick={() => setPanel(panel === "szczegoly" ? null : "szczegoly")}
-                            className="flex-1">
-                            Statystyki
-                        </Button>
-                    )}
+                    <Button color="secondary" size="sm"
+                        iconTrailing={panel === "szczegoly" ? ChevronUp : ChevronDown}
+                        onClick={() => setPanel(panel === "szczegoly" ? null : "szczegoly")}
+                        className="flex-1">
+                        Statystyki
+                    </Button>
                     <Button color="secondary" size="sm"
                         iconTrailing={panel === "typy" ? ChevronUp : ChevronDown}
                         onClick={() => setPanel(panel === "typy" ? null : "typy")}
@@ -755,6 +754,7 @@ export function ZakladFixtureCard({ fixture, zakladId, userId, myPrediction, myP
                     />
                 )}
             </div>
+            )}
         </div>
     );
 }
