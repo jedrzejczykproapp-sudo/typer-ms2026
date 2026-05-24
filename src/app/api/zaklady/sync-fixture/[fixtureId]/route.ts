@@ -107,6 +107,7 @@ export async function POST(
     return NextResponse.json({
         ok: true,
         matchStatus: result.matchStatus,
+        rawStatus: result.rawStatus,
         homeScore: result.homeScore,
         awayScore: result.awayScore,
         events: result.events,

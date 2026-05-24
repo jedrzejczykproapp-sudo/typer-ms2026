@@ -128,6 +128,8 @@ export interface SyncResult {
     homeScore: number | null;
     awayScore: number | null;
     matchStatus: "upcoming" | "live" | "finished";
+    /** Raw apifootball match_status: minute string ("35", "45+2"), "HT", "FT", etc. */
+    rawStatus: string;
 }
 
 // ─── Main sync function ───────────────────────────────────────────────────────
@@ -303,5 +305,6 @@ function parseMatch(match: ApiMatch, knownId: number | null): SyncResult {
         homeScore: isNaN(homeScore as number) ? null : homeScore,
         awayScore: isNaN(awayScore as number) ? null : awayScore,
         matchStatus,
+        rawStatus: match.match_status ?? "",
     };
 }

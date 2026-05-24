@@ -101,17 +101,55 @@ function formatMatchDate(dateStr: string) {
     }).format(d);
 }
 
-function calcLiveState(matchDate: string) {
-    const start = new Date(matchDate.replace(" ", "T")).getTime();
-    const elapsed = (Date.now() - start) / 60000;
-    if (elapsed <= 45) {
-        return { minute: Math.max(1, Math.floor(elapsed)), half: 1 as 1 | 2 | null, isHalftime: false, progress: (elapsed / 90) * 100 };
+interface LiveState {
+    minute: number;
+    extra_minute: number | null;
+    half: 1 | 2 | null;
+    isHalftime: boolean;
+    progress: number;
+    /** Timestamp (ms) when this state was fetched from API — used to tick forward between syncs */
+    fetchedAt: number;
+}
+
+/**
+ * Parse the raw apifootball match_status into a LiveState.
+ * rawStatus examples: "35", "45+2", "HT", "2H", "ET", "PEN"
+ */
+function parseRawStatus(rawStatus: string): LiveState | null {
+    if (!rawStatus) return null;
+
+    const now = Date.now();
+
+    if (rawStatus === "HT") {
+        return { minute: 45, extra_minute: null, half: null, isHalftime: true, progress: 50, fetchedAt: now };
     }
-    if (elapsed <= 60) {
-        return { minute: 45, half: null as 1 | 2 | null, isHalftime: true, progress: 50 };
+    if (rawStatus === "ET") {
+        return { minute: 90, extra_minute: null, half: null, isHalftime: false, progress: 100, fetchedAt: now };
     }
-    const s = elapsed - 15;
-    return { minute: Math.min(Math.floor(s), 90), half: 2 as 1 | 2 | null, isHalftime: false, progress: Math.min((s / 90) * 100, 100) };
+
+    // Numeric minute: "35", "45+2", "90+5"
+    const parts = rawStatus.split("+");
+    const minute = parseInt(parts[0]);
+    if (!isNaN(minute) && minute > 0) {
+        const extra = parts[1] ? (parseInt(parts[1]) || null) : null;
+        const half: 1 | 2 = minute <= 45 ? 1 : 2;
+        const progress = Math.min((minute / 90) * 100, 100);
+        return { minute, extra_minute: extra, half, isHalftime: false, progress, fetchedAt: now };
+    }
+
+    return null;
+}
+
+/**
+ * Tick a LiveState forward by the time elapsed since fetchedAt.
+ * Capped at 45' in first half, 90' in second half, never crosses halftime/FT.
+ */
+function tickLiveState(state: LiveState): LiveState {
+    if (state.isHalftime) return state; // halftime doesn't tick
+    const elapsedSinceFetch = (Date.now() - state.fetchedAt) / 60000;
+    const ticked = Math.floor(state.minute + elapsedSinceFetch);
+    const cap = state.half === 1 ? 45 : 90;
+    return { ...state, minute: Math.min(ticked, cap), extra_minute: null };
 }
 
 function calcPoints(ph: number, pa: number, ah: number, aa: number): number {
@@ -371,8 +409,8 @@ export function ZakladFixtureCard({ fixture, zakladId, userId, myPrediction, myP
     const [memberPreds, setMemberPreds] = useState<MemberPred[]>([]);
     const [loadingPreds, setLoadingPreds] = useState(false);
 
-    // Live ticker
-    const [liveState, setLiveState] = useState<ReturnType<typeof calcLiveState> | null>(null);
+    // Live ticker — driven by API rawStatus, ticked between syncs
+    const [liveState, setLiveState] = useState<LiveState | null>(null);
 
     const autoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const latestScores = useRef({ home: myPrediction?.home ?? 0, away: myPrediction?.away ?? 0 });
@@ -397,13 +435,12 @@ export function ZakladFixtureCard({ fixture, zakladId, userId, myPrediction, myP
     const hasPrediction = myPrediction !== null || hasSaved;
     const hasChanged = homeScore !== savedHome || awayScore !== savedAway;
 
-    // ── Live minute ticker ────────────────────────────────────────────────────
+    // ── Live minute ticker — tick forward every 30s between API syncs ─────────
     useEffect(() => {
-        if (!isLive) return;
-        setLiveState(calcLiveState(fixture.match_date));
-        const id = setInterval(() => setLiveState(calcLiveState(fixture.match_date)), 30_000);
+        if (!isLive || !liveState) return;
+        const id = setInterval(() => setLiveState((prev) => prev ? tickLiveState(prev) : prev), 30_000);
         return () => clearInterval(id);
-    }, [isLive, fixture.match_date]);
+    }, [isLive, liveState]);
 
     // ── Apply a sync API response to component state ──────────────────────────
     const applySyncResponse = useCallback((data: Record<string, unknown>) => {
@@ -414,11 +451,17 @@ export function ZakladFixtureCard({ fixture, zakladId, userId, myPrediction, myP
         if (newStatus) setLiveStatus(newStatus);
         if (newHome !== null && newAway !== null) {
             setLiveScore({ home: newHome, away: newAway });
-            // Propagate to parent so ranking recalculates
             onFixtureUpdate?.(fixture.id, newHome, newAway, newStatus ?? "");
         }
         if (Array.isArray(data.events)) setEvents(data.events as SyncedEvent[]);
         if (data.stats !== undefined) setStats(data.stats as SyncedStats | null);
+
+        // Update live minute from real API rawStatus ("35", "45+2", "HT", ...)
+        const raw = data.rawStatus as string | undefined;
+        if (raw !== undefined && newStatus === "live") {
+            const parsed = parseRawStatus(raw);
+            if (parsed) setLiveState(parsed);
+        }
     }, [fixture.id, onFixtureUpdate]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ── Sync with apifootball via our sync-fixture route ─────────────────────
@@ -656,16 +699,18 @@ export function ZakladFixtureCard({ fixture, zakladId, userId, myPrediction, myP
             </div>
 
             {/* Live progress bar */}
-            {isLive && liveState && (
+            {isLive && (
                 <div className="flex flex-col gap-1.5">
                     <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
                         <div className="h-full rounded-full bg-success-solid transition-all duration-1000"
-                            style={{ width: `${liveState.progress}%` }} />
+                            style={{ width: liveState ? `${liveState.progress}%` : "0%" }} />
                     </div>
                     <p className="text-center text-xs font-medium text-tertiary">
-                        {liveState.isHalftime ? "Przerwa"
-                            : liveState.half === 1 ? `1. połowa · ${liveState.minute}′`
-                                : `2. połowa · ${liveState.minute}′`}
+                        {!liveState ? "Trwa"
+                            : liveState.isHalftime ? "Przerwa"
+                            : liveState.half === 1
+                                ? `1. połowa · ${liveState.minute}${liveState.extra_minute ? `+${liveState.extra_minute}` : ""}′`
+                                : `2. połowa · ${liveState.minute}${liveState.extra_minute ? `+${liveState.extra_minute}` : ""}′`}
                     </p>
                 </div>
             )}
