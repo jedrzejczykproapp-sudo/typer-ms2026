@@ -27,6 +27,7 @@ export default function MeczePage() {
     const [activeLeague, setActiveLeague] = useState(ALL);
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [creating, setCreating] = useState(false);
+    const [createError, setCreateError] = useState<string | null>(null);
 
     useEffect(() => {
         fetch("/api/top-fixtures")
@@ -85,16 +86,22 @@ export default function MeczePage() {
     async function createZaklad() {
         if (selectedFixtures.length === 0 || creating) return;
         setCreating(true);
+        setCreateError(null);
         try {
             const res = await fetch("/api/zaklady", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ fixtures: selectedFixtures }),
             });
-            if (!res.ok) throw new Error("Błąd tworzenia zakładu");
-            const { id } = await res.json();
-            router.push(`/zaklady/${id}`);
-        } catch {
+            const data = await res.json();
+            if (!res.ok) {
+                setCreateError(data?.error ?? `Błąd ${res.status}`);
+                setCreating(false);
+                return;
+            }
+            router.push(`/zaklady/${data.id}`);
+        } catch (e) {
+            setCreateError("Błąd połączenia z serwerem");
             setCreating(false);
         }
     }
@@ -197,6 +204,9 @@ export default function MeczePage() {
                             {creating ? "Tworzę…" : "Utwórz zakład"}
                         </button>
                     </div>
+                    {createError && (
+                        <p className="px-3 pb-1 text-xs text-red-400">{createError}</p>
+                    )}
                 </div>
             )}
         </div>
