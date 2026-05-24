@@ -13,7 +13,7 @@ export default async function ZakladPage({ params }: Props) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) redirect("/logowanie");
 
-    // Fetch zakład with fixtures, members (with profiles), and user's predictions
+    // Fetch zakład with fixtures and members (no profiles join — no direct FK)
     const { data: zaklad, error } = await supabase
         .from("zaklady")
         .select(`
@@ -25,21 +25,40 @@ export default async function ZakladPage({ params }: Props) {
                 home_score, away_score, match_status,
                 odds_home, odds_draw, odds_away
             ),
-            zaklad_members(
-                user_id, joined_at,
-                profiles(display_name, avatar_url)
-            )
+            zaklad_members(user_id, joined_at)
         `)
         .eq("id", id)
         .single();
 
-    if (error || !zaklad) redirect("/zaklady");
+    if (error || !zaklad) {
+        console.error("Zaklad fetch error:", error);
+        redirect("/zaklady");
+    }
 
-    // Check if user is a member
-    const isMember = (zaklad.zaklad_members as { user_id: string }[]).some(
-        (m) => m.user_id === user.id,
-    );
+    // Check membership
+    const members = zaklad.zaklad_members as { user_id: string; joined_at: string }[];
+    const isMember = members.some((m) => m.user_id === user.id);
     if (!isMember) redirect("/zaklady");
+
+    // Fetch profiles for all members separately
+    const memberIds = members.map((m) => m.user_id);
+    const { data: profiles } = memberIds.length
+        ? await supabase
+              .from("profiles")
+              .select("id, display_name, avatar_url")
+              .in("id", memberIds)
+        : { data: [] };
+
+    const profileMap = new Map(
+        (profiles ?? []).map((p) => [p.id, { display_name: p.display_name, avatar_url: p.avatar_url }]),
+    );
+
+    // Merge members with profiles
+    const membersWithProfiles = members.map((m) => ({
+        user_id: m.user_id,
+        joined_at: m.joined_at,
+        profiles: profileMap.get(m.user_id) ?? null,
+    }));
 
     // Fetch all predictions for this zakład
     const { data: predictions } = await supabase
@@ -47,9 +66,14 @@ export default async function ZakladPage({ params }: Props) {
         .select("id, fixture_id, user_id, prediction, points")
         .eq("zaklad_id", id);
 
+    const zakladWithProfiles = {
+        ...zaklad,
+        zaklad_members: membersWithProfiles,
+    };
+
     return (
         <ZakladDetail
-            zaklad={zaklad as any}
+            zaklad={zakladWithProfiles as any}
             userId={user.id}
             predictions={predictions ?? []}
         />
