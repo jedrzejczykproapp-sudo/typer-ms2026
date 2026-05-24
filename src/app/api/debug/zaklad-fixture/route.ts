@@ -4,26 +4,60 @@ import { createAdminClient } from "@/lib/supabase/admin";
 const BASE = "https://apiv3.apifootball.com/";
 
 /**
- * Debug: GET /api/debug/zaklad-fixture?id=<fixture_uuid>
- * Shows exactly what apifootball returns for a zaklad fixture.
- * Tests both: league+date query AND match_id query.
+ * Debug: GET /api/debug/zaklad-fixture?zaklad_id=<zaklad_uuid>
+ *   → lists all fixtures for that zakład with apifootball diagnosis
+ * OR: GET /api/debug/zaklad-fixture?id=<fixture_uuid>
+ *   → diagnoses a single fixture
+ *
+ * The zaklad_id is visible in the URL: /zaklady/<zaklad_id>
  */
 export async function GET(req: NextRequest) {
-    const id = req.nextUrl.searchParams.get("id");
-    if (!id) return NextResponse.json({ error: "pass ?id=<fixture_uuid>" }, { status: 400 });
+    const zakladId = req.nextUrl.searchParams.get("zaklad_id");
+    const fixtureId = req.nextUrl.searchParams.get("id");
+
+    if (!zakladId && !fixtureId) {
+        return NextResponse.json({ error: "pass ?zaklad_id=<uuid> (from /zaklady/<uuid> URL) or ?id=<fixture_uuid>" }, { status: 400 });
+    }
 
     const key = process.env.APIFOOTBALL_API_KEY;
     if (!key) return NextResponse.json({ error: "APIFOOTBALL_API_KEY not set" }, { status: 500 });
 
     const admin = createAdminClient();
-    const { data: fixture, error } = await admin
-        .from("zaklad_fixtures")
-        .select("id, match_id, league_id, match_date, home_name, away_name, match_status, home_score, away_score")
-        .eq("id", id)
-        .single();
 
-    if (error || !fixture) {
-        return NextResponse.json({ error: "fixture not found", detail: error?.message }, { status: 404 });
+    // If zaklad_id given, list all fixtures and pick the first started one
+    let fixture: Record<string, unknown> | null = null;
+
+    if (zakladId) {
+        const { data: fixtures } = await admin
+            .from("zaklad_fixtures")
+            .select("id, match_id, league_id, match_date, home_name, away_name, match_status, home_score, away_score")
+            .eq("zaklad_id", zakladId)
+            .order("match_date", { ascending: true });
+
+        if (!fixtures?.length) {
+            return NextResponse.json({ error: "no fixtures for this zaklad_id" }, { status: 404 });
+        }
+
+        // Prefer a started (live/finished) fixture; fallback to first
+        const now = Date.now();
+        fixture = (fixtures.find((f) => new Date((f.match_date as string).replace(" ", "T")).getTime() <= now) ?? fixtures[0]) as Record<string, unknown>;
+
+        // Also return the full list so user can pick a specific id
+        const list = fixtures.map((f) => ({ id: f.id, home: f.home_name, away: f.away_name, date: f.match_date, status: f.match_status }));
+        if (!fixture) return NextResponse.json({ fixtures: list });
+
+        // Prepend the list for reference
+        Object.assign(fixture, { _all_fixture_ids: list });
+    } else {
+        const { data, error } = await admin
+            .from("zaklad_fixtures")
+            .select("id, match_id, league_id, match_date, home_name, away_name, match_status, home_score, away_score")
+            .eq("id", fixtureId!)
+            .single();
+        if (error || !data) {
+            return NextResponse.json({ error: "fixture not found", detail: error?.message }, { status: 404 });
+        }
+        fixture = data as Record<string, unknown>;
     }
 
     const date = (fixture.match_date as string).slice(0, 10);
