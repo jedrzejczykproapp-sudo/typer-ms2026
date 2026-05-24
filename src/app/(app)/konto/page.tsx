@@ -319,10 +319,26 @@ function EmptyState({ icon, title, description }: { icon: Parameters<typeof Feat
 
 // ─── Zakłady tab ─────────────────────────────────────────────────────────────
 
-function formatDate(dateStr: string) {
-    return new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "short", year: "numeric" }).format(
-        new Date(dateStr),
-    );
+function plMecze(n: number): string {
+    if (n === 1) return "1 mecz";
+    if (n % 100 >= 12 && n % 100 <= 14) return `${n} meczów`;
+    const mod = n % 10;
+    if (mod >= 2 && mod <= 4) return `${n} mecze`;
+    return `${n} meczów`;
+}
+
+function formatDateRange(fixtures: { match_date: string }[], fallback: string): string {
+    const fmt  = new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "short" });
+    const fmtY = new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "short", year: "numeric" });
+    if (!fixtures.length) return fmtY.format(new Date(fallback));
+    const sorted = [...fixtures].map((f) => f.match_date.slice(0, 10)).sort();
+    const first = new Date(sorted[0]);
+    const last  = new Date(sorted[sorted.length - 1]);
+    if (sorted[0] === sorted[sorted.length - 1]) return fmtY.format(first);
+    if (first.getMonth() === last.getMonth() && first.getFullYear() === last.getFullYear()) {
+        return `${first.getDate()}–${fmtY.format(last)}`;
+    }
+    return `${fmt.format(first)} – ${fmtY.format(last)}`;
 }
 
 async function ZakladyTab({ userId }: { userId: string }) {
@@ -330,7 +346,7 @@ async function ZakladyTab({ userId }: { userId: string }) {
 
     const { data: memberships } = await supabase
         .from("zaklad_members")
-        .select("zaklad_id, zaklady(id, number, status, created_at, zaklad_fixtures(id), zaklad_members(user_id))")
+        .select("zaklad_id, zaklady(id, number, status, created_at, zaklad_fixtures(id, match_date), zaklad_members(user_id))")
         .eq("user_id", userId)
         .order("joined_at", { ascending: false });
 
@@ -339,7 +355,7 @@ async function ZakladyTab({ userId }: { userId: string }) {
         number: number;
         status: "active" | "finished";
         created_at: string;
-        zaklad_fixtures: { id: string }[];
+        zaklad_fixtures: { id: string; match_date: string }[];
         zaklad_members: { user_id: string }[];
     };
 
@@ -373,8 +389,8 @@ async function ZakladyTab({ userId }: { userId: string }) {
                     href={`/zaklady/${z.id}`}
                     className="flex items-center gap-3 rounded-xl border border-secondary bg-primary px-4 py-3 shadow-xs transition hover:bg-primary_hover"
                 >
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-secondary">
-                        <Ticket01 className="size-5 text-fg-brand-primary" />
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/10">
+                        <Ticket01 className="size-5 text-white" />
                     </div>
                     <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
@@ -386,14 +402,14 @@ async function ZakladyTab({ userId }: { userId: string }) {
                             )}
                         </div>
                         <div className="flex items-center gap-2 text-xs text-tertiary">
-                            <span>{z.zaklad_fixtures.length} {z.zaklad_fixtures.length === 1 ? "mecz" : "meczów"}</span>
+                            <span>{plMecze(z.zaklad_fixtures.length)}</span>
                             <span>·</span>
                             <span className="flex items-center gap-1">
                                 <Users01 className="size-3" />
                                 {z.zaklad_members.length}
                             </span>
                             <span>·</span>
-                            <span>{formatDate(z.created_at)}</span>
+                            <span>{formatDateRange(z.zaklad_fixtures, z.created_at)}</span>
                         </div>
                     </div>
                     <ChevronRight className="size-4 shrink-0 text-fg-quaternary" />

@@ -63,7 +63,7 @@ export async function GET() {
         .from("zaklady")
         .select(`
             id, number, invite_code, status, created_at,
-            zaklad_fixtures(id),
+            zaklad_fixtures(id, match_date),
             zaklad_members(user_id)
         `)
         .order("created_at", { ascending: false });
