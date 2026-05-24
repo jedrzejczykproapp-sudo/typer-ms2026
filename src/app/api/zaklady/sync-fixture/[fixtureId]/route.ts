@@ -22,19 +22,7 @@ export async function POST(
         return NextResponse.json({ error: "fixture not found" }, { status: 404 });
     }
 
-    // 2. Return early if already finished (no need to re-fetch)
-    if (FINISHED_STATUSES.includes(fixture.match_status)) {
-        return NextResponse.json({
-            skipped: "finished",
-            matchStatus: "finished",
-            homeScore: fixture.home_score !== "" ? parseInt(fixture.home_score ?? "") : null,
-            awayScore: fixture.away_score !== "" ? parseInt(fixture.away_score ?? "") : null,
-            events: [],
-            stats: null,
-        });
-    }
-
-    // 3. Only sync once the match has started
+    // 2. Only sync once the match has started
     const started = Date.now() >= new Date((fixture.match_date ?? "").replace(" ", "T")).getTime();
     if (!started) {
         return NextResponse.json({ skipped: "not started yet" });

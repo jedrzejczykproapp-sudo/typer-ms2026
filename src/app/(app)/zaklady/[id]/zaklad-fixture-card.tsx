@@ -384,7 +384,7 @@ export function ZakladFixtureCard({ fixture, zakladId, userId, myPrediction, myP
 
     // ── Sync with apifootball via our sync-fixture route ─────────────────────
     useEffect(() => {
-        if (!isStarted || isFinished) return;
+        if (!isStarted) return;
         let cancelled = false;
 
         const doSync = async () => {
@@ -408,7 +408,7 @@ export function ZakladFixtureCard({ fixture, zakladId, userId, myPrediction, myP
         doSync();
         const id = isLive ? setInterval(doSync, 60_000) : null;
         return () => { cancelled = true; if (id) clearInterval(id); };
-    }, [fixture.id, isStarted, isLive, isFinished]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [fixture.id, isStarted, isLive]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ── Realtime subscription to zaklad_fixtures for instant score updates ───
     useEffect(() => {
@@ -579,18 +579,22 @@ export function ZakladFixtureCard({ fixture, zakladId, userId, myPrediction, myP
             {/* Score row */}
             <div className="flex items-center gap-2">
                 <div className="flex flex-1 justify-center">
-                    {isStarted && hasScore ? (
-                        <span className="text-4xl font-bold tabular-nums text-primary">{liveScore.home}</span>
+                    {isStarted ? (
+                        <span className="text-4xl font-bold tabular-nums text-primary">
+                            {liveScore.home !== "" ? liveScore.home : "0"}
+                        </span>
                     ) : (
-                        <ScoreInput value={homeScore} onChange={handleHomeChange} disabled={isLocked} />
+                        <ScoreInput value={homeScore} onChange={handleHomeChange} disabled={false} />
                     )}
                 </div>
                 <span className={cx("shrink-0 text-2xl font-bold", isLive ? "text-white" : "text-tertiary")}>:</span>
                 <div className="flex flex-1 justify-center">
-                    {isStarted && hasScore ? (
-                        <span className="text-4xl font-bold tabular-nums text-primary">{liveScore.away}</span>
+                    {isStarted ? (
+                        <span className="text-4xl font-bold tabular-nums text-primary">
+                            {liveScore.away !== "" ? liveScore.away : "0"}
+                        </span>
                     ) : (
-                        <ScoreInput value={awayScore} onChange={handleAwayChange} disabled={isLocked} />
+                        <ScoreInput value={awayScore} onChange={handleAwayChange} disabled={false} />
                     )}
                 </div>
             </div>
@@ -644,8 +648,8 @@ export function ZakladFixtureCard({ fixture, zakladId, userId, myPrediction, myP
             )}
 
             {/* Points badge after finished */}
-            {isFinished && hasPrediction && (
-                <div className="flex flex-col items-center gap-1">
+            {isFinished && hasPrediction && displayPoints !== null && (
+                <div className="flex justify-center">
                     <div className={cx(
                         "flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold",
                         displayPoints === 3 ? "bg-success-primary text-success-primary"
@@ -655,11 +659,8 @@ export function ZakladFixtureCard({ fixture, zakladId, userId, myPrediction, myP
                         {displayPoints === 3 ? "Dokładny wynik"
                             : displayPoints === 1 ? "Poprawny wynik"
                                 : "0 pkt"}
-                        {displayPoints !== null && ` · ${displayPoints} pkt`}
+                        {` · ${displayPoints} pkt`}
                     </div>
-                    <p className="text-center text-xs text-tertiary">
-                        Twój typ: {homeScore}:{awayScore}
-                    </p>
                 </div>
             )}
 
@@ -695,32 +696,6 @@ export function ZakladFixtureCard({ fixture, zakladId, userId, myPrediction, myP
                         {justSaved ? "Zapisano!" : "Zapisz typ"}
                     </Button>
                 )
-            )}
-
-            {/* Locked but not finished — show user's prediction */}
-            {isLocked && !isFinished && !isLive && (
-                hasPrediction ? (
-                    <div className="flex items-center justify-between border-t border-secondary pt-3">
-                        <span className="text-xs text-tertiary">Twój typ</span>
-                        <span className="rounded-xl bg-brand-secondary px-3 py-1.5 text-sm font-bold text-fg-brand-primary">
-                            {homeScore}:{awayScore}
-                        </span>
-                    </div>
-                ) : (
-                    <p className="border-t border-secondary pt-3 text-center text-xs text-tertiary">
-                        Mecz już się rozpoczął — typowanie zablokowane
-                    </p>
-                )
-            )}
-
-            {/* Live: show own prediction above action buttons */}
-            {isLive && hasPrediction && (
-                <div className="flex items-center justify-between border-t border-secondary pt-3">
-                    <span className="text-xs text-tertiary">Twój typ</span>
-                    <span className="rounded-xl bg-brand-secondary px-3 py-1.5 text-sm font-bold text-fg-brand-primary">
-                        {homeScore}:{awayScore}
-                    </span>
-                </div>
             )}
 
             {/* Action buttons — shown when match started (live or finished) */}
