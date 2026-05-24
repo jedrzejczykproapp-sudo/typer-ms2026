@@ -22,9 +22,13 @@ export async function POST(
         return NextResponse.json({ error: "fixture not found" }, { status: 404 });
     }
 
-    // 2. Only sync once the match has started
-    const started = Date.now() >= new Date((fixture.match_date ?? "").replace(" ", "T")).getTime();
-    if (!started) {
+    // 2. Only sync once the match date has arrived.
+    // Dates are stored as Poland local time (CET/CEST = UTC+1/+2) without timezone info.
+    // To avoid false "not started" on a UTC server, compare only the date portion
+    // (YYYY-MM-DD) so any match scheduled today-or-earlier will be synced.
+    const matchDateStr = (fixture.match_date ?? "").slice(0, 10);          // "2026-05-24"
+    const todayStr     = new Date().toISOString().slice(0, 10);             // UTC date
+    if (matchDateStr > todayStr) {
         return NextResponse.json({ skipped: "not started yet" });
     }
 
