@@ -108,7 +108,7 @@ export default function MeczePage() {
 
     return (
         <div className="flex flex-col gap-5 pb-20">
-            <h1 className="text-lg font-bold text-primary">Wybierz mecze do zakładu</h1>
+            <h1 className="text-lg font-bold text-primary">Mecze</h1>
 
             {/* League filter tabs */}
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">

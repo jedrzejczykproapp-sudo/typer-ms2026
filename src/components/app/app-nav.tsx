@@ -26,7 +26,7 @@ export function AppNav({ profileSrc, profileInits = "?" }: Props) {
         <>
             {/* Desktop: sticky below header */}
             <nav className="sticky top-14 z-20 hidden border-b border-secondary bg-primary lg:block">
-                <div className="mx-auto flex h-11 max-w-2xl items-center gap-1 px-4">
+                <div className="flex h-11 items-center px-6">
                     {mainItems.map(({ href, label, icon: Icon }) => {
                         const isActive = pathname === href || pathname.startsWith(href + "/");
                         return (
@@ -34,10 +34,10 @@ export function AppNav({ profileSrc, profileInits = "?" }: Props) {
                                 key={href}
                                 href={href}
                                 className={cx(
-                                    "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition duration-100",
+                                    "flex flex-1 items-center justify-center gap-2 py-1.5 text-sm font-medium transition duration-100",
                                     isActive
-                                        ? "bg-secondary text-fg-brand-primary"
-                                        : "text-tertiary hover:bg-secondary hover:text-secondary",
+                                        ? "text-fg-brand-primary"
+                                        : "text-quaternary hover:text-secondary",
                                 )}
                             >
                                 <Icon className="size-4 shrink-0" />
@@ -49,10 +49,10 @@ export function AppNav({ profileSrc, profileInits = "?" }: Props) {
                     <Link
                         href="/konto"
                         className={cx(
-                            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition duration-100",
+                            "flex flex-1 items-center justify-center gap-2 py-1.5 text-sm font-medium transition duration-100",
                             isProfileActive
-                                ? "bg-secondary text-fg-brand-primary"
-                                : "text-tertiary hover:bg-secondary hover:text-secondary",
+                                ? "text-fg-brand-primary"
+                                : "text-quaternary hover:text-secondary",
                         )}
                     >
                         <User01 className="size-4 shrink-0" />
