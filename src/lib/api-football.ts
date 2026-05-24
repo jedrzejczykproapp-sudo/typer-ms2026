@@ -126,6 +126,8 @@ export interface SyncResult {
 
 export async function syncMatchData(opts: {
     competitionType: string;
+    /** Direct apifootball league_id — bypasses LEAGUE_IDS lookup (used by zaklad sync) */
+    leagueId?: string;
     matchDate: string;
     homeTeam: string;
     awayTeam: string;
@@ -137,13 +139,50 @@ export async function syncMatchData(opts: {
         return null;
     }
 
-    const { competitionType, matchDate, homeTeam, awayTeam, cachedFixtureId } = opts;
+    const { competitionType, leagueId: directLeagueId, matchDate, homeTeam, awayTeam, cachedFixtureId } = opts;
 
-    // ── If we already have a fixture ID, fetch by match_id directly ───────────
+    // ── Resolve league ID: direct override → LEAGUE_IDS lookup ───────────────
+    const resolvedLeagueId = directLeagueId ?? LEAGUE_IDS[competitionType];
+
+    // ── Primary: search by date + league (returns full live stats) ───────────
+    // This is the proven approach used for Ekstraklasa/WC syncing.
+    // Even when cachedFixtureId is available, the league query returns richer
+    // live statistics than the single-match endpoint on the free tier.
+    if (resolvedLeagueId) {
+        const date = matchDate.slice(0, 10);
+        const url = `${BASE}?action=get_events&from=${date}&to=${date}&league_id=${resolvedLeagueId}&APIkey=${key}`;
+        console.log("[apifootball] fixture lookup by league:", url);
+        const res = await fetch(url, { cache: "no-store" });
+        if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data) && data.length > 0) {
+                const matches: ApiMatch[] = data;
+                const found = matches.find((m) => {
+                    const hn = norm(m.match_hometeam_name);
+                    const an = norm(m.match_awayteam_name);
+                    const ourH = norm(homeTeam);
+                    const ourA = norm(awayTeam);
+                    return (
+                        (hn === ourH || hn.includes(ourH.split(" ")[0]) || ourH.includes(hn.split(" ")[0])) &&
+                        (an === ourA || an.includes(ourA.split(" ")[0]) || ourA.includes(an.split(" ")[0]))
+                    );
+                });
+                if (found) {
+                    console.log("[apifootball] match found by league lookup:", found.match_id);
+                    return parseMatch(found, cachedFixtureId ?? (parseInt(found.match_id) || null));
+                }
+                console.warn("[apifootball] match not found in league results:", homeTeam, "vs", awayTeam, "on", date);
+            }
+        } else {
+            console.error("[apifootball] league lookup failed:", res.status, res.statusText);
+        }
+    }
+
+    // ── Fallback: fetch by match_id directly (if we have it) ─────────────────
     if (cachedFixtureId) {
         const url = `${BASE}?action=get_events&match_id=${cachedFixtureId}&APIkey=${key}`;
-        console.log("[apifootball] fetch by id:", url);
-        const res = await fetch(url);
+        console.log("[apifootball] fallback fetch by id:", url);
+        const res = await fetch(url, { cache: "no-store" });
         if (!res.ok) {
             console.error("[apifootball] fetch by id failed:", res.status);
             return null;
@@ -158,49 +197,9 @@ export async function syncMatchData(opts: {
         return parseMatch(match, cachedFixtureId);
     }
 
-    // ── Otherwise search by date + league ────────────────────────────────────
-    const leagueId = LEAGUE_IDS[competitionType];
-    if (!leagueId) {
-        console.error("[apifootball] unknown competitionType:", competitionType, "known:", Object.keys(LEAGUE_IDS));
-        return null;
-    }
-
-    const date = matchDate.slice(0, 10);
-    const url = `${BASE}?action=get_events&from=${date}&to=${date}&league_id=${leagueId}&APIkey=${key}`;
-    console.log("[apifootball] fixture lookup:", url);
-    const res = await fetch(url);
-    if (!res.ok) {
-        console.error("[apifootball] fixture lookup failed:", res.status, res.statusText);
-        return null;
-    }
-
-    const data = await res.json();
-    if (!Array.isArray(data)) {
-        console.error("[apifootball] unexpected response (not array):", JSON.stringify(data).slice(0, 200));
-        return null;
-    }
-
-    const matches: ApiMatch[] = data;
-    console.log("[apifootball] matches on", date, ":", matches.length);
-
-    const found = matches.find((m) => {
-        const hn = norm(m.match_hometeam_name);
-        const an = norm(m.match_awayteam_name);
-        const ourH = norm(homeTeam);
-        const ourA = norm(awayTeam);
-        console.log("[apifootball] comparing:", { hn, an, ourH, ourA });
-        return (
-            (hn === ourH || hn.includes(ourH.split(" ")[0]) || ourH.includes(hn.split(" ")[0])) &&
-            (an === ourA || an.includes(ourA.split(" ")[0]) || ourA.includes(an.split(" ")[0]))
-        );
-    });
-
-    if (!found) {
-        console.error("[apifootball] match not found:", homeTeam, "vs", awayTeam, "on", date);
-        return null;
-    }
-
-    return parseMatch(found, null);
+    // ── No usable data source ─────────────────────────────────────────────────
+    console.error("[apifootball] no leagueId and no cachedFixtureId for", homeTeam, "vs", awayTeam);
+    return null;
 }
 
 function parseMatch(match: ApiMatch, knownId: number | null): SyncResult {

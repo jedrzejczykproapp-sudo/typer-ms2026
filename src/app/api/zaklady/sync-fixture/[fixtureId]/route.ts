@@ -14,7 +14,7 @@ export async function POST(
     // 1. Load fixture from DB
     const { data: fixture, error } = await admin
         .from("zaklad_fixtures")
-        .select("id, match_id, match_date, home_name, away_name, match_status, home_score, away_score")
+        .select("id, match_id, league_id, match_date, home_name, away_name, match_status, home_score, away_score")
         .eq("id", fixtureId)
         .single();
 
@@ -35,11 +35,12 @@ export async function POST(
     }
 
     const result = await syncMatchData({
-        competitionType: "", // ignored when cachedFixtureId is set
+        competitionType: "",
+        leagueId: fixture.league_id ?? undefined,  // league+date search (richer live stats)
         matchDate: fixture.match_date ?? "",
         homeTeam: fixture.home_name ?? "",
         awayTeam: fixture.away_name ?? "",
-        cachedFixtureId: apifootball_id,
+        cachedFixtureId: apifootball_id,  // fallback if league search fails
     });
 
     if (!result) {
