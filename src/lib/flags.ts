@@ -161,7 +161,8 @@ const TEAM_TO_PL: Record<string, string> = {
 export function getFlagUrl(teamName: string): string | null {
     const code = TEAM_TO_CODE[teamName];
     if (!code) return null;
-    return `https://cdn.jsdelivr.net/gh/kapowaz/square-flags@master/flags/${code}.svg`;
+    // flagcdn.com covers all ISO 3166-1 codes including regional (gb-eng, gb-sct, cw, etc.)
+    return `https://flagcdn.com/w80/${code}.png`;
 }
 
 export function getTeamNamePl(teamName: string): string {
