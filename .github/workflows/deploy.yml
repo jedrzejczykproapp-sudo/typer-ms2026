@@ -8,12 +8,20 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Vercel Deploy
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Deploy to Production
         env:
-          VERCEL_DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
-        run: |
-          if [ -z "$VERCEL_DEPLOY_HOOK" ]; then
-            echo "Error: VERCEL_DEPLOY_HOOK secret is not set"
-            exit 1
-          fi
-          curl -fsSL -X POST "$VERCEL_DEPLOY_HOOK"
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: team_t84KFFIcwuSSYWAyNwld2YNK
+          VERCEL_PROJECT_ID: prj_aJY2Emu2Hw009sksShO5XxH2crFY
+        run: vercel deploy --prod --yes --token=$VERCEL_TOKEN
