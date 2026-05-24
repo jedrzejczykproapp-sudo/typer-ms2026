@@ -32,6 +32,19 @@ function norm(s: string) {
     return s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[łŁ]/g, "l").toLowerCase().trim();
 }
 
+// Expand abbreviations and strip noise so "Manchester Utd" == "Manchester United"
+function expandName(s: string): string {
+    return norm(s)
+        .replace(/\butd\b/g, "united")
+        .replace(/\bman\b(?=\s)/g, "manchester")
+        .replace(/\bspurs\b/g, "tottenham hotspur")
+        .replace(/\bwolves\b/g, "wolverhampton wanderers")
+        .replace(/\bwolverhampton\b(?!\s+wanderers)/g, "wolverhampton wanderers")
+        .replace(/\b(fc|cf|sc|ac|as|ss|us|rc|rcd|cd|ud|sd|ca|ra|afc|if)\b/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
 type OddsMap = Map<string, { home: number; draw: number; away: number }>;
 
 async function fetchLeagueOdds(oddsKey: string): Promise<OddsMap> {
@@ -53,11 +66,12 @@ async function fetchLeagueOdds(oddsKey: string): Promise<OddsMap> {
             const drawOdds = h2h.outcomes.find((o: { name: string }) => o.name === "Draw")?.price;
             const awayOdds = h2h.outcomes.find((o: { name: string }) => o.name === event.away_team)?.price;
             if (homeOdds && drawOdds && awayOdds) {
-                map.set(`${norm(event.home_team)}|${norm(event.away_team)}`, {
-                    home: homeOdds,
-                    draw: drawOdds,
-                    away: awayOdds,
-                });
+                // Store under both raw-norm and expanded key so both lookups work
+                const rawKey = `${norm(event.home_team)}|${norm(event.away_team)}`;
+                const expandedKey = `${expandName(event.home_team)}|${expandName(event.away_team)}`;
+                const entry = { home: homeOdds, draw: drawOdds, away: awayOdds };
+                map.set(rawKey, entry);
+                if (expandedKey !== rawKey) map.set(expandedKey, entry);
             }
         }
         return map;
@@ -106,8 +120,13 @@ export async function GET() {
                     const homeSt = posMap.get(homeKey) ?? posMap.get(`id:${e.match_hometeam_id}`) ?? null;
                     const awaySt = posMap.get(awayKey) ?? posMap.get(`id:${e.match_awayteam_id}`) ?? null;
 
-                    // Match odds by normalized team names
-                    const matchOdds = odds.get(`${homeKey}|${awayKey}`) ?? null;
+                    // Match odds: try raw norm first, then expanded names
+                    const homeExp = expandName(e.match_hometeam_name ?? "");
+                    const awayExp = expandName(e.match_awayteam_name ?? "");
+                    const matchOdds =
+                        odds.get(`${homeKey}|${awayKey}`) ??
+                        odds.get(`${homeExp}|${awayExp}`) ??
+                        null;
 
                     fixtures.push({
                         match_id: e.match_id,
