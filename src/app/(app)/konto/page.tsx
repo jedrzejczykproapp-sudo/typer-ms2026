@@ -125,6 +125,7 @@ function dateLabel(dateStr: string): string {
 type ZakladFixtureRow = {
     id: string;
     zaklad_id: string;
+    league_id: string;
     league_name: string;
     league_flag: string;
     match_date: string;
@@ -172,7 +173,7 @@ async function WydarzeniaTab({
     if (activeZakladIds.length) {
         const { data: fixtures } = await supabase
             .from("zaklad_fixtures")
-            .select("id, zaklad_id, league_name, league_flag, match_date, home_name, home_badge, home_position, away_name, away_badge, away_position, home_score, away_score, match_status, odds_home, odds_draw, odds_away, venue")
+            .select("id, zaklad_id, league_id, league_name, league_flag, match_date, home_name, home_badge, home_position, away_name, away_badge, away_position, home_score, away_score, match_status, odds_home, odds_draw, odds_away, venue")
             .in("zaklad_id", activeZakladIds)
             .gte("match_date", todayStr)
             .order("match_date", { ascending: true });

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CheckCircle, PlusCircle } from "@untitledui/icons";
 import type { Fixture } from "@/app/api/top-fixtures/route";
 import { cx } from "@/utils/cx";
+import { getTeamNamePl, getFlagUrl } from "@/lib/flags";
 
 function TeamLogo({ badge, name }: { badge: string; name: string }) {
     const [err, setErr] = useState(false);
@@ -59,6 +60,12 @@ interface Props {
 }
 
 export function FixtureCard({ fixture, odds, selectable, selected, onToggle }: Props) {
+    const isWC = fixture.league_id === "28";
+    const homeName  = isWC ? getTeamNamePl(fixture.home.name) : fixture.home.name;
+    const awayName  = isWC ? getTeamNamePl(fixture.away.name) : fixture.away.name;
+    const homeBadge = isWC ? (getFlagUrl(fixture.home.name) ?? fixture.home.badge) : fixture.home.badge;
+    const awayBadge = isWC ? (getFlagUrl(fixture.away.name) ?? fixture.away.badge) : fixture.away.badge;
+
     const time = formatTime(fixture.match_date);
     const isLive = fixture.status === "1" || fixture.match_id && parseInt(fixture.status) > 0 && fixture.status !== "FT" && fixture.status !== "";
     const isFinished = fixture.status === "FT" || fixture.status === "AET" || fixture.status === "PEN" || fixture.status === "Finished";
@@ -103,7 +110,7 @@ export function FixtureCard({ fixture, odds, selectable, selected, onToggle }: P
                 {/* Home */}
                 <div className="flex flex-col items-center gap-1.5">
                     <div className="relative">
-                        <TeamLogo badge={fixture.home.badge} name={fixture.home.name} />
+                        <TeamLogo badge={homeBadge} name={homeName} />
                         {fixture.home.position && (
                             <span className="absolute -right-1 -bottom-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary border border-secondary px-1 text-[10px] font-bold tabular-nums text-tertiary shadow-sm">
                                 {fixture.home.position}
@@ -111,7 +118,7 @@ export function FixtureCard({ fixture, odds, selectable, selected, onToggle }: P
                         )}
                     </div>
                     <span className="line-clamp-2 w-full text-center text-xs font-semibold leading-tight text-primary">
-                        {fixture.home.name}
+                        {homeName}
                     </span>
                 </div>
 
@@ -129,7 +136,7 @@ export function FixtureCard({ fixture, odds, selectable, selected, onToggle }: P
                 {/* Away */}
                 <div className="flex flex-col items-center gap-1.5">
                     <div className="relative">
-                        <TeamLogo badge={fixture.away.badge} name={fixture.away.name} />
+                        <TeamLogo badge={awayBadge} name={awayName} />
                         {fixture.away.position && (
                             <span className="absolute -right-1 -bottom-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary border border-secondary px-1 text-[10px] font-bold tabular-nums text-tertiary shadow-sm">
                                 {fixture.away.position}
@@ -137,7 +144,7 @@ export function FixtureCard({ fixture, odds, selectable, selected, onToggle }: P
                         )}
                     </div>
                     <span className="line-clamp-2 w-full text-center text-xs font-semibold leading-tight text-primary">
-                        {fixture.away.name}
+                        {awayName}
                     </span>
                 </div>
             </div>

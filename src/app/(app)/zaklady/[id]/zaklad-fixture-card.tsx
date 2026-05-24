@@ -7,9 +7,11 @@ import { Avatar } from "@/components/base/avatar/avatar";
 import { createClient } from "@/lib/supabase/client";
 import { cx } from "@/utils/cx";
 import type { SyncedEvent, SyncedStats } from "@/lib/api-football";
+import { getTeamNamePl, getFlagUrl } from "@/lib/flags";
 
 interface ZakladFixture {
     id: string;
+    league_id: string;
     league_name: string;
     league_flag: string;
     match_date: string;
@@ -376,6 +378,13 @@ export function ZakladFixtureCard({ fixture, zakladId, userId, myPrediction, myP
     const latestScores = useRef({ home: myPrediction?.home ?? 0, away: myPrediction?.away ?? 0 });
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+    // WC localisation
+    const isWC = fixture.league_id === "28";
+    const homeName  = isWC ? getTeamNamePl(fixture.home_name) : fixture.home_name;
+    const awayName  = isWC ? getTeamNamePl(fixture.away_name) : fixture.away_name;
+    const homeBadge = isWC ? (getFlagUrl(fixture.home_name) ?? fixture.home_badge) : fixture.home_badge;
+    const awayBadge = isWC ? (getFlagUrl(fixture.away_name) ?? fixture.away_badge) : fixture.away_badge;
+
     // Derived state
     const now = new Date();
     const matchTime = new Date(fixture.match_date.replace(" ", "T"));
@@ -617,7 +626,7 @@ export function ZakladFixtureCard({ fixture, zakladId, userId, myPrediction, myP
             <div className="flex items-start gap-2">
                 <div className="flex flex-1 flex-col items-center gap-2">
                     <div className="relative">
-                        <TeamLogo badge={fixture.home_badge} name={fixture.home_name} />
+                        <TeamLogo badge={homeBadge} name={homeName} />
                         {fixture.home_position && (
                             <span className="absolute -right-1 -bottom-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full border border-secondary bg-primary px-1 text-[10px] font-bold tabular-nums text-tertiary shadow-sm">
                                 {fixture.home_position}
@@ -625,7 +634,7 @@ export function ZakladFixtureCard({ fixture, zakladId, userId, myPrediction, myP
                         )}
                     </div>
                     <span className="line-clamp-2 w-full text-center text-sm font-semibold leading-tight text-primary">
-                        {fixture.home_name}
+                        {homeName}
                     </span>
                 </div>
                 <div className="flex shrink-0 items-center justify-center pt-4">
@@ -633,7 +642,7 @@ export function ZakladFixtureCard({ fixture, zakladId, userId, myPrediction, myP
                 </div>
                 <div className="flex flex-1 flex-col items-center gap-2">
                     <div className="relative">
-                        <TeamLogo badge={fixture.away_badge} name={fixture.away_name} />
+                        <TeamLogo badge={awayBadge} name={awayName} />
                         {fixture.away_position && (
                             <span className="absolute -right-1 -bottom-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full border border-secondary bg-primary px-1 text-[10px] font-bold tabular-nums text-tertiary shadow-sm">
                                 {fixture.away_position}
@@ -641,7 +650,7 @@ export function ZakladFixtureCard({ fixture, zakladId, userId, myPrediction, myP
                         )}
                     </div>
                     <span className="line-clamp-2 w-full text-center text-sm font-semibold leading-tight text-primary">
-                        {fixture.away_name}
+                        {awayName}
                     </span>
                 </div>
             </div>
@@ -735,8 +744,8 @@ export function ZakladFixtureCard({ fixture, zakladId, userId, myPrediction, myP
                     <MatchDetails
                         events={events}
                         stats={stats}
-                        homeName={fixture.home_name}
-                        awayName={fixture.away_name}
+                        homeName={homeName}
+                        awayName={awayName}
                         loading={loadingDetails}
                     />
                 )}

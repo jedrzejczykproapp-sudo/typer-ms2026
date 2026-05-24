@@ -5,6 +5,7 @@ import { Users01 } from "@untitledui/icons";
 import { ZakladFixtureCard } from "./zaklad-fixture-card";
 import { ZakladRanking } from "./zaklad-ranking";
 import { ZakladSettingsMenu } from "./zaklad-settings-menu";
+import { WcGroupTable } from "./wc-group-table";
 
 const FINISHED_STATUSES = ["finished", "FT", "AET", "PEN", "Finished"];
 
@@ -62,7 +63,9 @@ interface Props {
     predictions: Prediction[];
 }
 
-const TABS = ["typowania", "ranking"] as const;
+const WC_LEAGUE_ID = "28";
+
+const TABS = ["typowania", "ranking", "grupy"] as const;
 type Tab = (typeof TABS)[number];
 
 export function ZakladDetail({ zaklad, userId, predictions: initialPredictions }: Props) {
@@ -75,6 +78,7 @@ export function ZakladDetail({ zaklad, userId, predictions: initialPredictions }
     >(new Map());
 
     const isCreator = zaklad.creator_id === userId;
+    const hasWcFixtures = zaklad.zaklad_fixtures.some((f) => f.league_id === WC_LEAGUE_ID);
     const memberCount = zaklad.zaklad_members.length;
 
     const handlePrediction = useCallback(
@@ -170,7 +174,7 @@ export function ZakladDetail({ zaklad, userId, predictions: initialPredictions }
 
             {/* Tabs */}
             <div className="flex overflow-hidden rounded-xl bg-secondary">
-                {TABS.map((t) => (
+                {TABS.filter((t) => t !== "grupy" || hasWcFixtures).map((t) => (
                     <button
                         key={t}
                         type="button"
@@ -181,7 +185,7 @@ export function ZakladDetail({ zaklad, userId, predictions: initialPredictions }
                                 : "border-secondary/40 font-medium text-tertiary hover:text-secondary"
                         }`}
                     >
-                        {t === "typowania" ? "Wydarzenia" : "Ranking"}
+                        {t === "typowania" ? "Wydarzenia" : t === "ranking" ? "Ranking" : "Grupy MŚ"}
                     </button>
                 ))}
             </div>
@@ -222,6 +226,9 @@ export function ZakladDetail({ zaklad, userId, predictions: initialPredictions }
                     userId={userId}
                 />
             )}
+
+            {/* Grupy MŚ tab */}
+            {tab === "grupy" && hasWcFixtures && <WcGroupTable />}
         </div>
     );
 }
