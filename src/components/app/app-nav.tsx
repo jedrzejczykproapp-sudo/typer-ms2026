@@ -26,7 +26,7 @@ export function AppNav({ profileSrc, profileInits = "?" }: Props) {
         <>
             {/* Desktop: sticky below header */}
             <nav className="sticky top-14 z-20 hidden border-b border-secondary bg-primary lg:block">
-                <div className="flex h-11 items-center px-6">
+                <div className="mx-auto flex h-11 max-w-2xl items-center px-4">
                     {mainItems.map(({ href, label, icon: Icon }) => {
                         const isActive = pathname === href || pathname.startsWith(href + "/");
                         return (
