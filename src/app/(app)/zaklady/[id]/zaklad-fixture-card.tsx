@@ -44,6 +44,8 @@ interface Props {
     myPrediction: { home: number; away: number } | null;
     myPoints: number | null;
     onPredict?: (home: number, away: number) => void;
+    /** Called whenever a sync returns updated score / status — lets parent refresh ranking */
+    onFixtureUpdate?: (fixtureId: string, homeScore: string, awayScore: string, matchStatus: string) => void;
 }
 
 // ─── Small helpers ────────────────────────────────────────────────────────────
@@ -345,7 +347,7 @@ function MemberPredsPanel({ preds, loading, userId, homeScore, awayScore, isLive
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function ZakladFixtureCard({ fixture, zakladId, userId, myPrediction, myPoints, onPredict }: Props) {
+export function ZakladFixtureCard({ fixture, zakladId, userId, myPrediction, myPoints, onPredict, onFixtureUpdate }: Props) {
     // Prediction input state
     const [homeScore, setHomeScore] = useState(myPrediction?.home ?? 0);
     const [awayScore, setAwayScore] = useState(myPrediction?.away ?? 0);
@@ -394,6 +396,22 @@ export function ZakladFixtureCard({ fixture, zakladId, userId, myPrediction, myP
         return () => clearInterval(id);
     }, [isLive, fixture.match_date]);
 
+    // ── Apply a sync API response to component state ──────────────────────────
+    const applySyncResponse = useCallback((data: Record<string, unknown>) => {
+        const newStatus = data.matchStatus as string | undefined;
+        const newHome   = data.homeScore !== null && data.homeScore !== undefined ? String(data.homeScore) : null;
+        const newAway   = data.awayScore !== null && data.awayScore !== undefined ? String(data.awayScore ?? 0) : null;
+
+        if (newStatus) setLiveStatus(newStatus);
+        if (newHome !== null && newAway !== null) {
+            setLiveScore({ home: newHome, away: newAway });
+            // Propagate to parent so ranking recalculates
+            onFixtureUpdate?.(fixture.id, newHome, newAway, newStatus ?? "");
+        }
+        if (Array.isArray(data.events)) setEvents(data.events as SyncedEvent[]);
+        if (data.stats !== undefined) setStats(data.stats as SyncedStats | null);
+    }, [fixture.id, onFixtureUpdate]); // eslint-disable-line react-hooks/exhaustive-deps
+
     // ── Sync with apifootball via our sync-fixture route ─────────────────────
     useEffect(() => {
         if (!isStarted) return;
@@ -405,15 +423,7 @@ export function ZakladFixtureCard({ fixture, zakladId, userId, myPrediction, myP
                 if (!res.ok || cancelled) return;
                 const data = await res.json();
                 if (cancelled) return;
-                if (data.matchStatus) setLiveStatus(data.matchStatus);
-                if (data.homeScore !== null && data.homeScore !== undefined) {
-                    setLiveScore({
-                        home: String(data.homeScore),
-                        away: String(data.awayScore ?? 0),
-                    });
-                }
-                if (Array.isArray(data.events)) setEvents(data.events);
-                if (data.stats !== undefined) setStats(data.stats);
+                applySyncResponse(data);
             } catch { /* silent */ }
         };
 
@@ -492,15 +502,7 @@ export function ZakladFixtureCard({ fixture, zakladId, userId, myPrediction, myP
         setLoadingDetails(true);
         fetch(`/api/zaklady/sync-fixture/${fixture.id}`, { method: "POST" })
             .then((r) => r.ok ? r.json() : null)
-            .then((data) => {
-                if (!data) return;
-                if (Array.isArray(data.events)) setEvents(data.events);
-                if (data.stats !== undefined) setStats(data.stats);
-                if (data.matchStatus) setLiveStatus(data.matchStatus);
-                if (data.homeScore !== null && data.homeScore !== undefined) {
-                    setLiveScore({ home: String(data.homeScore), away: String(data.awayScore ?? 0) });
-                }
-            })
+            .then((data) => { if (data) applySyncResponse(data); })
             .catch(() => { /* silent */ })
             .finally(() => setLoadingDetails(false));
     }, [panel, fixture.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -710,49 +712,49 @@ export function ZakladFixtureCard({ fixture, zakladId, userId, myPrediction, myP
                 )
             )}
 
-            {/* Action buttons — shown when match started (live or finished) */}
-            {isStarted && (
-                <div className="flex flex-col gap-2">
-                    <div className="flex gap-2">
+            {/* Action buttons — Statystyki (started only) + Typy (always) */}
+            <div className="flex flex-col gap-2">
+                <div className="flex gap-2">
+                    {isStarted && (
                         <Button color="secondary" size="sm"
                             iconTrailing={panel === "szczegoly" ? ChevronUp : ChevronDown}
                             onClick={() => setPanel(panel === "szczegoly" ? null : "szczegoly")}
                             className="flex-1">
                             Statystyki
                         </Button>
-                        <Button color="secondary" size="sm"
-                            iconTrailing={panel === "typy" ? ChevronUp : ChevronDown}
-                            onClick={() => setPanel(panel === "typy" ? null : "typy")}
-                            className="flex-1">
-                            Typy
-                        </Button>
-                    </div>
-
-                    {/* Statystyki panel */}
-                    {panel === "szczegoly" && (
-                        <MatchDetails
-                            events={events}
-                            stats={stats}
-                            homeName={fixture.home_name}
-                            awayName={fixture.away_name}
-                            loading={loadingDetails}
-                        />
                     )}
-
-                    {/* Typy panel */}
-                    {panel === "typy" && (
-                        <MemberPredsPanel
-                            preds={memberPreds}
-                            loading={loadingPreds}
-                            userId={userId}
-                            homeScore={liveScore.home !== "" ? liveScore.home : "0"}
-                            awayScore={liveScore.away !== "" ? liveScore.away : "0"}
-                            isLive={isLive}
-                            isFinished={isFinished}
-                        />
-                    )}
+                    <Button color="secondary" size="sm"
+                        iconTrailing={panel === "typy" ? ChevronUp : ChevronDown}
+                        onClick={() => setPanel(panel === "typy" ? null : "typy")}
+                        className="flex-1">
+                        Typy
+                    </Button>
                 </div>
-            )}
+
+                {/* Statystyki panel */}
+                {panel === "szczegoly" && (
+                    <MatchDetails
+                        events={events}
+                        stats={stats}
+                        homeName={fixture.home_name}
+                        awayName={fixture.away_name}
+                        loading={loadingDetails}
+                    />
+                )}
+
+                {/* Typy panel */}
+                {panel === "typy" && (
+                    <MemberPredsPanel
+                        preds={memberPreds}
+                        loading={loadingPreds}
+                        userId={userId}
+                        homeScore={liveScore.home !== "" ? liveScore.home : "0"}
+                        awayScore={liveScore.away !== "" ? liveScore.away : "0"}
+                        isLive={isLive}
+                        isFinished={isFinished}
+                    />
+                )}
+            </div>
         </div>
     );
 }

@@ -14,7 +14,7 @@ export async function POST(
     // 1. Load fixture from DB
     const { data: fixture, error } = await admin
         .from("zaklad_fixtures")
-        .select("id, match_id, league_id, match_date, home_name, away_name, match_status, home_score, away_score")
+        .select("id, zaklad_id, match_id, league_id, match_date, home_name, away_name, match_status, home_score, away_score")
         .eq("id", fixtureId)
         .single();
 
@@ -68,6 +68,30 @@ export async function POST(
         if (upErr) console.error("[sync-fixture] update error", upErr);
     }
 
+    // 6. If this fixture just finished, check whether ALL fixtures in the zakład are done.
+    //    If yes → mark the zakład itself as finished.
+    let zakladJustFinished = false;
+    if (result.matchStatus === "finished" && fixture.zaklad_id) {
+        const { data: siblings } = await admin
+            .from("zaklad_fixtures")
+            .select("id, match_status")
+            .eq("zaklad_id", fixture.zaklad_id);
+
+        // Treat the current fixture as "finished" even if DB hasn't flushed yet
+        const allDone = siblings?.every((s) =>
+            s.id === fixtureId ? true : FINISHED_STATUSES.includes(s.match_status),
+        );
+
+        if (allDone && siblings?.length) {
+            const { error: finErr } = await admin
+                .from("zaklady")
+                .update({ status: "finished" })
+                .eq("id", fixture.zaklad_id)
+                .eq("status", "active"); // only update if still active (idempotent)
+            if (!finErr) zakladJustFinished = true;
+        }
+    }
+
     return NextResponse.json({
         ok: true,
         matchStatus: result.matchStatus,
@@ -75,5 +99,6 @@ export async function POST(
         awayScore: result.awayScore,
         events: result.events,
         stats: result.stats,
+        zakladFinished: zakladJustFinished,
     });
 }
