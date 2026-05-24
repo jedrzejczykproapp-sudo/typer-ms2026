@@ -69,34 +69,17 @@ export default async function ZakladPage({ params }: Props) {
         .select("id, fixture_id, user_id, predicted_home, predicted_away, points")
         .eq("zaklad_id", id);
 
-    // Fetch live odds for upcoming fixtures (per league, parallel)
     const now = new Date();
     const rawFixtures = zaklad.zaklad_fixtures as {
         id: string; league_id: string; match_date: string;
-        home_name: string; away_name: string;
+        home_name: string; home_badge: string; home_position: number | null;
+        away_name: string; away_badge: string; away_position: number | null;
         odds_home: number | null; odds_draw: number | null; odds_away: number | null;
         venue: string | null;
         [key: string]: unknown;
     }[];
 
-    const upcomingLeagueIds = [
-        ...new Set(
-            rawFixtures
-                .filter((f) => new Date(f.match_date.replace(" ", "T")) > now)
-                .map((f) => f.league_id),
-        ),
-    ];
-
-    // Fetch odds for all relevant leagues in parallel
-    const oddsResults = await Promise.all(
-        upcomingLeagueIds.map(async (leagueId) => {
-            const league = LEAGUE_BY_ID.get(leagueId);
-            if (!league) return { leagueId, map: new Map() };
-            return { leagueId, map: await getOddsByKey(league.oddsKey) };
-        }),
-    );
-    const oddsByLeague = new Map(oddsResults.map((r) => [r.leagueId, r.map]));
-
+    // Normalise name: strip diacritics, lowercase, & → and
     function normForOdds(s: string) {
         return s
             .normalize("NFD")
@@ -107,6 +90,7 @@ export default async function ZakladPage({ params }: Props) {
             .trim();
     }
 
+    // Expand common abbreviations so "Man Utd" == "Manchester United"
     function expandForOdds(s: string): string {
         return normForOdds(s)
             .replace(/\butd\b/g, "united")
@@ -123,23 +107,88 @@ export default async function ZakladPage({ params }: Props) {
             .replace(/^nottingham$/, "nottingham forest")
             .replace(/^leicester$/, "leicester city")
             .replace(/^ipswich$/, "ipswich town")
+            .replace(/\bparis\b.*\bsaint.germain\b/, "paris saint-germain")
+            .replace(/^psg$/, "paris saint-germain")
             .replace(/\b(fc|cf|sc|ac|as|ss|us|rc|rcd|cd|ud|sd|ca|ra|afc|if)\b/g, "")
             .replace(/\s+/g, " ")
             .trim();
     }
 
-    // Enrich fixtures: inject live odds + venue fallback
+    // All unique league IDs across all fixtures (not just upcoming — standings needed for all)
+    const allLeagueIds = [...new Set(rawFixtures.map((f) => f.league_id))];
+    const upcomingLeagueIds = [
+        ...new Set(
+            rawFixtures
+                .filter((f) => new Date(f.match_date.replace(" ", "T")) > now)
+                .map((f) => f.league_id),
+        ),
+    ];
+
+    const APIFOOTBALL_BASE = "https://apiv3.apifootball.com/";
+    const afKey = process.env.APIFOOTBALL_API_KEY ?? "";
+
+    // Fetch odds (upcoming leagues) + standings (all leagues) in parallel
+    const [oddsResults, standingsResults] = await Promise.all([
+        Promise.all(
+            upcomingLeagueIds.map(async (leagueId) => {
+                const league = LEAGUE_BY_ID.get(leagueId);
+                if (!league) return { leagueId, map: new Map() };
+                return { leagueId, map: await getOddsByKey(league.oddsKey) };
+            }),
+        ),
+        Promise.all(
+            allLeagueIds.map(async (leagueId) => {
+                if (!afKey) return { leagueId, posMap: new Map<string, number>() };
+                try {
+                    const res = await fetch(
+                        `${APIFOOTBALL_BASE}?action=get_standings&league_id=${leagueId}&APIkey=${afKey}`,
+                        { next: { revalidate: 3600 } },
+                    );
+                    if (!res.ok) return { leagueId, posMap: new Map<string, number>() };
+                    const rows = await res.json();
+                    const posMap = new Map<string, number>();
+                    if (Array.isArray(rows)) {
+                        for (const row of rows as Record<string, string>[]) {
+                            const pos = parseInt(row.overall_league_position) || 0;
+                            if (!pos) continue;
+                            posMap.set(normForOdds(row.team_name ?? ""), pos);
+                            if (row.team_id) posMap.set(`id:${row.team_id}`, pos);
+                        }
+                    }
+                    return { leagueId, posMap };
+                } catch {
+                    return { leagueId, posMap: new Map<string, number>() };
+                }
+            }),
+        ),
+    ]);
+
+    const oddsByLeague  = new Map(oddsResults.map((r) => [r.leagueId, r.map]));
+    const posByLeague   = new Map(standingsResults.map((r) => [r.leagueId, r.posMap]));
+
+    // Enrich every fixture: live odds + venue fallback + fresh positions
     const enrichedFixtures = rawFixtures.map((f) => {
         const matchTime = new Date(f.match_date.replace(" ", "T"));
         const isUpcoming = matchTime > now;
 
-        if (!isUpcoming) return f;
+        // Positions — always re-fetch from standings (covers past + future)
+        const posMap   = posByLeague.get(f.league_id);
+        const homePos  = posMap?.get(normForOdds(f.home_name)) ?? posMap?.get(`id:${f.home_badge}`) ?? f.home_position ?? null;
+        const awayPos  = posMap?.get(normForOdds(f.away_name)) ?? posMap?.get(`id:${f.away_badge}`) ?? f.away_position ?? null;
 
-        const oddsMap = oddsByLeague.get(f.league_id);
-        const homeKey = normForOdds(f.home_name);
-        const awayKey = normForOdds(f.away_name);
-        const homeExp = expandForOdds(f.home_name);
-        const awayExp = expandForOdds(f.away_name);
+        // Venue — always apply fallback
+        const venue = (f.venue as string | null) || getStadium(f.home_name) || null;
+
+        if (!isUpcoming) {
+            return { ...f, home_position: homePos, away_position: awayPos, venue };
+        }
+
+        // Odds — only for upcoming
+        const oddsMap  = oddsByLeague.get(f.league_id);
+        const homeKey  = normForOdds(f.home_name);
+        const awayKey  = normForOdds(f.away_name);
+        const homeExp  = expandForOdds(f.home_name);
+        const awayExp  = expandForOdds(f.away_name);
         const liveOdds =
             oddsMap?.get(`${homeKey}|${awayKey}`) ??
             oddsMap?.get(`${homeExp}|${awayExp}`) ??
@@ -147,10 +196,12 @@ export default async function ZakladPage({ params }: Props) {
 
         return {
             ...f,
+            home_position: homePos,
+            away_position: awayPos,
+            venue,
             odds_home: liveOdds?.home ?? f.odds_home,
             odds_draw: liveOdds?.draw ?? f.odds_draw,
             odds_away: liveOdds?.away ?? f.odds_away,
-            venue: f.venue || getStadium(f.home_name) || null,
         };
     });
 
