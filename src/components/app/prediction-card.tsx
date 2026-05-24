@@ -112,28 +112,28 @@ function ScoreInput({
     );
 }
 
-function TeamFlag({ teamName, competitionType, size = "md" }: { teamName: string; competitionType?: string; size?: "sm" | "md" }) {
+function TeamFlag({ teamName, competitionType, flagUrl: directUrl, size = "md" }: { teamName: string; competitionType?: string; flagUrl?: string | null; size?: "sm" | "md" }) {
     const [imgError, setImgError] = useState(false);
     const isEkstraklasa = competitionType === "ekstraklasa_2526";
-    const url = isEkstraklasa ? getClubCrestUrl(teamName) : getFlagUrl(teamName);
+    const isMls = competitionType === "mls_2026";
+    const isClub = isEkstraklasa || isMls;
+    // For club competitions use direct URL first, then library lookup
+    const url = directUrl ?? (isEkstraklasa ? getClubCrestUrl(teamName) : (!isMls ? getFlagUrl(teamName) : null));
     const sizeClass = size === "md" ? "size-12" : "size-8";
 
     if (!url || imgError) {
-        if (isEkstraklasa) {
-            return (
-                <div className={`${sizeClass} flex shrink-0 items-center justify-center rounded-xl bg-secondary text-sm font-bold text-tertiary`}>
-                    {teamName.charAt(0)}
-                </div>
-            );
-        }
-        return <div className={`${sizeClass} shrink-0 rounded-xl bg-secondary`} />;
+        return (
+            <div className={`${sizeClass} flex shrink-0 items-center justify-center rounded-xl bg-secondary text-sm font-bold text-tertiary`}>
+                {teamName.charAt(0)}
+            </div>
+        );
     }
 
     return (
         <img
             src={url}
             alt={teamName}
-            className={`${sizeClass} shrink-0 rounded-xl ${isEkstraklasa ? "object-contain p-1" : "object-cover"}`}
+            className={`${sizeClass} shrink-0 rounded-xl ${isClub ? "object-contain p-1" : "object-cover"}`}
             onError={() => setImgError(true)}
         />
     );
@@ -472,7 +472,7 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                         ? groupName
                         : match.group_name
                           ? `Grupa ${match.group_name} · Kolejka ${match.matchday}`
-                          : competitionType === "ekstraklasa_2526" && match.matchday
+                          : (competitionType === "ekstraklasa_2526" || competitionType === "mls_2026") && match.matchday
                             ? `Kolejka ${match.matchday}`
                             : stageLabels[match.stage]}
                 </span>
@@ -536,22 +536,34 @@ export function PredictionCard({ match, groupId, prediction, odds, competitionTy
                     {/* Wiersz 2: herb/flaga + nazwa — wyśrodkowane pod wynikiem */}
                     <div className="flex items-center gap-2">
                         <div className="flex flex-1 flex-col items-center gap-2">
-                            <TeamFlag teamName={match.home_team} competitionType={competitionType} />
+                            <TeamFlag
+                                teamName={match.home_team}
+                                competitionType={competitionType}
+                                flagUrl={match.home_flag || null}
+                            />
                             <span className="line-clamp-2 w-full text-center text-sm font-semibold leading-tight text-primary">
                                 {competitionType === "ekstraklasa_2526"
                                     ? getClubDisplayName(match.home_team)
-                                    : getTeamNamePl(match.home_team)}
+                                    : competitionType === "mls_2026"
+                                      ? match.home_team
+                                      : getTeamNamePl(match.home_team)}
                             </span>
                         </div>
                         <div className="flex shrink-0 items-center justify-center">
                             <span className="text-xs font-medium text-quaternary">vs</span>
                         </div>
                         <div className="flex flex-1 flex-col items-center gap-2">
-                            <TeamFlag teamName={match.away_team} competitionType={competitionType} />
+                            <TeamFlag
+                                teamName={match.away_team}
+                                competitionType={competitionType}
+                                flagUrl={match.away_flag || null}
+                            />
                             <span className="line-clamp-2 w-full text-center text-sm font-semibold leading-tight text-primary">
                                 {competitionType === "ekstraklasa_2526"
                                     ? getClubDisplayName(match.away_team)
-                                    : getTeamNamePl(match.away_team)}
+                                    : competitionType === "mls_2026"
+                                      ? match.away_team
+                                      : getTeamNamePl(match.away_team)}
                             </span>
                         </div>
                     </div>

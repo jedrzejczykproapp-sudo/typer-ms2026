@@ -10,6 +10,7 @@ const BASE = "https://apiv3.apifootball.com/";
 const LEAGUE_IDS: Record<string, string> = {
     ekstraklasa_2526: "259",
     wc_2026: "28",
+    mls_2026: "332",
 };
 
 function norm(s: string) {

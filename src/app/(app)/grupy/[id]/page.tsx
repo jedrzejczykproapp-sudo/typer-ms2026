@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getMatchesWithPredictions, getLeaderboardWithLive } from "@/actions/prediction-actions";
+import { ensureUpcomingMatches } from "@/actions/sync-league-matches";
 import { getOdds } from "@/lib/odds";
 import { getFlagUrl, getTeamNamePl } from "@/lib/flags";
 import { getClubCrestUrl, getClubDisplayName } from "@/lib/clubs";
@@ -104,15 +105,41 @@ export default async function GroupPage({
 }
 
 async function TypowaniaTab({ groupId, userId }: { groupId: string; userId: string }) {
-    const { matches, predictions, competitionType } = await getMatchesWithPredictions(groupId);
+    // Auto-sync league fixtures if none are upcoming (MLS, Ekstraklasa)
+    const { matches: initialMatches, predictions, competitionType } = await getMatchesWithPredictions(groupId);
+
+    // If no upcoming matches for a league competition, trigger sync and re-fetch
+    const isLeagueComp = competitionType === "mls_2026" || competitionType === "ekstraklasa_2526";
+    const hasUpcoming = initialMatches.some((m) => m.status !== "finished");
+    let matches = initialMatches;
+    if (isLeagueComp && !hasUpcoming) {
+        const synced = await ensureUpcomingMatches(competitionType);
+        if (synced) {
+            // Re-fetch after sync
+            const { matches: fresh } = await getMatchesWithPredictions(groupId);
+            matches = fresh;
+        }
+    }
+
     const oddsMap = await getOdds(competitionType);
 
-    // Ekstraklasa: show last round (highest matchday) only
+    // League competitions: show only the current/next active matchday
     let displayMatches = matches;
-    if (competitionType === "ekstraklasa_2526") {
-        const matchdays = matches.map((m) => m.matchday ?? 0).filter(Boolean);
-        const lastRound = matchdays.length > 0 ? Math.max(...matchdays) : 0;
-        displayMatches = lastRound > 0 ? matches.filter((m) => m.matchday === lastRound) : matches;
+    if (isLeagueComp) {
+        // Find the smallest matchday that has at least one upcoming or live match
+        const upcomingMatchdays = matches
+            .filter((m) => m.status !== "finished")
+            .map((m) => m.matchday ?? 0)
+            .filter(Boolean);
+        if (upcomingMatchdays.length > 0) {
+            const nextRound = Math.min(...upcomingMatchdays);
+            displayMatches = matches.filter((m) => m.matchday === nextRound);
+        } else {
+            // All done — show last played round
+            const matchdays = matches.map((m) => m.matchday ?? 0).filter(Boolean);
+            const lastRound = matchdays.length > 0 ? Math.max(...matchdays) : 0;
+            displayMatches = lastRound > 0 ? matches.filter((m) => m.matchday === lastRound) : matches;
+        }
     }
 
     const grouped = groupMatchesByStage(displayMatches);
