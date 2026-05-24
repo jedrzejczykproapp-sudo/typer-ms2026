@@ -290,6 +290,7 @@ async function WydarzeniaTab({
                                     key={`z-${item.fixture.id}`}
                                     fixture={item.fixture}
                                     zakladId={item.fixture.zaklad_id}
+                                    userId={userId}
                                     myPrediction={item.prediction}
                                     myPoints={item.points}
                                 />

@@ -156,6 +156,7 @@ export function ZakladDetail({ zaklad, userId, predictions: initialPredictions }
                                 key={fixture.id}
                                 fixture={fixture}
                                 zakladId={zaklad.id}
+                                userId={userId}
                                 myPrediction={
                                     myPred
                                         ? { home: myPred.predicted_home, away: myPred.predicted_away }
