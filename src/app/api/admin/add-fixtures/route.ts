@@ -52,6 +52,27 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = req.nextUrl;
 
+    // ── Mode: update fixture league metadata ─────────────────────────────────
+    if (searchParams.get("action") === "patch") {
+        const matchId    = searchParams.get("match_id");
+        const leagueName = searchParams.get("league_name");
+        const leagueFlag = searchParams.get("league_flag");
+        const leagueId   = searchParams.get("league_id");
+        if (!matchId) return NextResponse.json({ error: "match_id required" }, { status: 400 });
+        const updates: Record<string, string> = {};
+        if (leagueName) updates.league_name = leagueName;
+        if (leagueFlag) updates.league_flag = leagueFlag;
+        if (leagueId)   updates.league_id   = leagueId;
+        const admin = createAdminClient();
+        const { data, error } = await admin
+            .from("zaklad_fixtures")
+            .update(updates)
+            .eq("match_id", matchId)
+            .select("id, match_id, league_name, league_flag, league_id, home_name, away_name");
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ updated: data });
+    }
+
     // ── Mode: search leagues by keyword ──────────────────────────────────────
     const searchQuery = searchParams.get("search");
     if (searchQuery) {
