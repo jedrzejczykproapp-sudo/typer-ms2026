@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { Copy01, Users01, CheckCircle, Trash01 } from "@untitledui/icons";
+import { Users01 } from "@untitledui/icons";
 import { ZakladFixtureCard } from "./zaklad-fixture-card";
 import { ZakladRanking } from "./zaklad-ranking";
-import { cx } from "@/utils/cx";
+import { ZakladSettingsMenu } from "./zaklad-settings-menu";
 
 interface ZakladFixture {
     id: string;
@@ -61,54 +60,15 @@ interface Props {
     predictions: Prediction[];
 }
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://typerek.com";
 const TABS = ["typowania", "ranking"] as const;
 type Tab = (typeof TABS)[number];
 
 export function ZakladDetail({ zaklad, userId, predictions: initialPredictions }: Props) {
-    const router = useRouter();
     const [tab, setTab] = useState<Tab>("typowania");
     const [predictions, setPredictions] = useState<Prediction[]>(initialPredictions);
-    const [copied, setCopied] = useState(false);
-    const [cancelStep, setCancelStep] = useState<"idle" | "confirm" | "loading">("idle");
-    const [cancelError, setCancelError] = useState<string | null>(null);
 
     const isCreator = zaklad.creator_id === userId;
     const memberCount = zaklad.zaklad_members.length;
-    const inviteLink = `${APP_URL}/dolacz-zaklad?kod=${zaklad.invite_code}`;
-
-    const copyInvite = useCallback(() => {
-        navigator.clipboard.writeText(inviteLink).then(() => {
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        });
-    }, [inviteLink]);
-
-    const handleCancelClick = useCallback(() => {
-        if (memberCount > 1) {
-            setCancelStep("confirm");
-        } else {
-            doCancel();
-        }
-    }, [memberCount]);
-
-    const doCancel = useCallback(async () => {
-        setCancelStep("loading");
-        setCancelError(null);
-        try {
-            const res = await fetch(`/api/zaklady/${zaklad.id}`, { method: "DELETE" });
-            if (!res.ok) {
-                const data = await res.json();
-                setCancelError(data?.error ?? "Błąd serwera");
-                setCancelStep("confirm");
-                return;
-            }
-            router.push("/zaklady");
-        } catch {
-            setCancelError("Błąd połączenia");
-            setCancelStep("confirm");
-        }
-    }, [zaklad.id, router]);
 
     const handlePrediction = useCallback(
         (fixtureId: string, home: number, away: number) => {
@@ -157,69 +117,14 @@ export function ZakladDetail({ zaklad, userId, predictions: initialPredictions }
                     </div>
                 </div>
 
-                {/* Akcje: Zaproś + Anuluj */}
-                <div className="flex shrink-0 items-center gap-2">
-                    <button
-                        onClick={copyInvite}
-                        className={cx(
-                            "flex items-center gap-1.5 rounded-xl border px-4 py-2 text-sm font-semibold transition",
-                            copied
-                                ? "border-success-solid bg-success-primary text-success-primary"
-                                : "border-secondary bg-primary text-secondary hover:bg-secondary",
-                        )}
-                    >
-                        {copied ? (
-                            <><CheckCircle className="size-4" /> Skopiowano</>
-                        ) : (
-                            <><Copy01 className="size-4" /> Zaproś</>
-                        )}
-                    </button>
-
-                    {isCreator && (
-                        <button
-                            onClick={handleCancelClick}
-                            className="flex items-center gap-1.5 rounded-xl border border-error-solid px-4 py-2 text-sm font-semibold text-error-primary transition hover:bg-error-primary"
-                        >
-                            <Trash01 className="size-4" />
-                            Anuluj
-                        </button>
-                    )}
-                </div>
+                <ZakladSettingsMenu
+                    zakladId={zaklad.id}
+                    zakladNumber={zaklad.number}
+                    inviteCode={zaklad.invite_code}
+                    memberCount={memberCount}
+                    isCreator={isCreator}
+                />
             </div>
-
-            {/* Dialog potwierdzenia anulowania */}
-            {cancelStep === "confirm" && (
-                <div className="rounded-xl border border-error-solid bg-error-primary p-4">
-                    <p className="text-sm font-semibold text-error-primary">Anulować zakład?</p>
-                    <p className="mt-0.5 text-xs text-error-secondary">
-                        Zakład ma {memberCount} uczestników. Wszyscy stracą dostęp i typy zostaną usunięte.
-                    </p>
-                    {cancelError && (
-                        <p className="mt-2 text-xs text-error-primary">{cancelError}</p>
-                    )}
-                    <div className="mt-3 flex gap-2">
-                        <button
-                            onClick={() => setCancelStep("idle")}
-                            className="flex-1 rounded-lg border border-secondary bg-primary px-3 py-2 text-sm font-semibold text-secondary transition hover:bg-secondary"
-                        >
-                            Nie, wróć
-                        </button>
-                        <button
-                            onClick={doCancel}
-                            className="flex-1 rounded-lg bg-error-solid px-3 py-2 text-sm font-semibold text-white transition hover:opacity-90"
-                        >
-                            Tak, anuluj zakład
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {cancelStep === "loading" && (
-                <div className="flex items-center justify-center gap-2 rounded-xl border border-secondary py-4 text-sm text-tertiary">
-                    <div className="size-4 animate-spin rounded-full border-2 border-brand-solid border-t-transparent" />
-                    Anuluję zakład…
-                </div>
-            )}
 
             {/* Tabs */}
             <div className="flex overflow-hidden rounded-xl bg-secondary">
