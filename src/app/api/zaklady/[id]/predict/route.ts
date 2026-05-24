@@ -10,8 +10,14 @@ export async function POST(
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { fixture_id, prediction } = await req.json();
-    if (!fixture_id || !["1", "X", "2"].includes(prediction)) {
+    const { fixture_id, predicted_home, predicted_away } = await req.json();
+    if (
+        !fixture_id ||
+        typeof predicted_home !== "number" ||
+        typeof predicted_away !== "number" ||
+        predicted_home < 0 ||
+        predicted_away < 0
+    ) {
         return NextResponse.json({ error: "Invalid input" }, { status: 400 });
     }
 
@@ -45,10 +51,10 @@ export async function POST(
     const { data, error } = await supabase
         .from("zaklad_predictions")
         .upsert(
-            { zaklad_id: zakladId, fixture_id, user_id: user.id, prediction },
+            { zaklad_id: zakladId, fixture_id, user_id: user.id, predicted_home, predicted_away },
             { onConflict: "fixture_id,user_id" },
         )
-        .select("id, prediction, points")
+        .select("id, predicted_home, predicted_away, points")
         .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });

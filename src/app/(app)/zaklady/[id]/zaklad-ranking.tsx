@@ -18,7 +18,8 @@ interface Fixture {
 interface Prediction {
     fixture_id: string;
     user_id: string;
-    prediction: "1" | "X" | "2" | null;
+    predicted_home: number;
+    predicted_away: number;
     points: number | null;
 }
 
@@ -29,23 +30,21 @@ interface Props {
     userId: string;
 }
 
-function getResult(fixture: Fixture): "1" | "X" | "2" | null {
+function calcPoints(pred: Prediction, fixture: Fixture): number {
     const isFinished =
         fixture.match_status === "FT" ||
         fixture.match_status === "AET" ||
         fixture.match_status === "PEN" ||
         fixture.match_status === "Finished";
-    if (!isFinished || fixture.home_score === "" || fixture.away_score === "") return null;
-    const h = parseInt(fixture.home_score);
-    const a = parseInt(fixture.away_score);
-    if (isNaN(h) || isNaN(a)) return null;
-    if (h > a) return "1";
-    if (h < a) return "2";
-    return "X";
-}
-
-function calcPoints(prediction: "1" | "X" | "2", result: "1" | "X" | "2"): number {
-    return prediction === result ? 1 : 0;
+    if (!isFinished || fixture.home_score === "" || fixture.away_score === "") return 0;
+    const ah = parseInt(fixture.home_score);
+    const aa = parseInt(fixture.away_score);
+    if (isNaN(ah) || isNaN(aa)) return 0;
+    const ph = pred.predicted_home;
+    const pa = pred.predicted_away;
+    if (ph === ah && pa === aa) return 3;
+    if (Math.sign(ph - pa) === Math.sign(ah - aa)) return 1;
+    return 0;
 }
 
 export function ZakladRanking({ members, fixtures, predictions, userId }: Props) {
@@ -58,17 +57,14 @@ export function ZakladRanking({ members, fixtures, predictions, userId }: Props)
 
                 for (const fixture of fixtures) {
                     const pred = memberPreds.find((p) => p.fixture_id === fixture.id);
-                    if (!pred?.prediction) continue;
+                    if (!pred) continue;
                     typed++;
 
                     // Use stored points if available, otherwise calculate from score
                     if (pred.points !== null) {
                         points += pred.points;
                     } else {
-                        const result = getResult(fixture);
-                        if (result) {
-                            points += calcPoints(pred.prediction, result);
-                        }
+                        points += calcPoints(pred, fixture);
                     }
                 }
 

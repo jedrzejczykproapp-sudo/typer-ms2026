@@ -63,7 +63,7 @@ export default async function ZakladPage({ params }: Props) {
     // Fetch all predictions for this zakład
     const { data: predictions } = await supabase
         .from("zaklad_predictions")
-        .select("id, fixture_id, user_id, prediction, points")
+        .select("id, fixture_id, user_id, predicted_home, predicted_away, points")
         .eq("zaklad_id", id);
 
     const zakladWithProfiles = {

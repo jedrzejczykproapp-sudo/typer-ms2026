@@ -48,7 +48,8 @@ interface Prediction {
     id: string;
     fixture_id: string;
     user_id: string;
-    prediction: "1" | "X" | "2" | null;
+    predicted_home: number;
+    predicted_away: number;
     points: number | null;
 }
 
@@ -77,30 +78,31 @@ export function ZakladDetail({ zaklad, userId, predictions: initialPredictions }
     }, [inviteLink]);
 
     const handlePrediction = useCallback(
-        async (fixtureId: string, value: "1" | "X" | "2") => {
-            // Optimistic update
+        (fixtureId: string, home: number, away: number) => {
+            // Optimistic update — API call is handled inside ZakladFixtureCard (auto-save)
             setPredictions((prev) => {
                 const existing = prev.find((p) => p.fixture_id === fixtureId && p.user_id === userId);
                 if (existing) {
                     return prev.map((p) =>
                         p.fixture_id === fixtureId && p.user_id === userId
-                            ? { ...p, prediction: value }
+                            ? { ...p, predicted_home: home, predicted_away: away }
                             : p,
                     );
                 }
                 return [
                     ...prev,
-                    { id: crypto.randomUUID(), fixture_id: fixtureId, user_id: userId, prediction: value, points: null },
+                    {
+                        id: crypto.randomUUID(),
+                        fixture_id: fixtureId,
+                        user_id: userId,
+                        predicted_home: home,
+                        predicted_away: away,
+                        points: null,
+                    },
                 ];
             });
-
-            await fetch(`/api/zaklady/${zaklad.id}/predict`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ fixture_id: fixtureId, prediction: value }),
-            });
         },
-        [zaklad.id, userId],
+        [userId],
     );
 
     // Sort fixtures by date
@@ -167,9 +169,14 @@ export function ZakladDetail({ zaklad, userId, predictions: initialPredictions }
                             <ZakladFixtureCard
                                 key={fixture.id}
                                 fixture={fixture}
-                                myPrediction={myPred?.prediction ?? null}
+                                zakladId={zaklad.id}
+                                myPrediction={
+                                    myPred
+                                        ? { home: myPred.predicted_home, away: myPred.predicted_away }
+                                        : null
+                                }
                                 myPoints={myPred?.points ?? null}
-                                onPredict={(val) => handlePrediction(fixture.id, val)}
+                                onPredict={(home, away) => handlePrediction(fixture.id, home, away)}
                             />
                         );
                     })}
