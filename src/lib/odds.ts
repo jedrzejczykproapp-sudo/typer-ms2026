@@ -7,6 +7,7 @@ export interface MatchOdds {
 const SPORT_KEYS: Record<string, string> = {
     wc_2026: "soccer_fifa_world_cup",
     ekstraklasa_2526: "soccer_poland_ekstraklasa",
+    mls_2026: "soccer_usa_mls",
 };
 
 // Normalise: strip diacritics + lowercase so API names match our DB names

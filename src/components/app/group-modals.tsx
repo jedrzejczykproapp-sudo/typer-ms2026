@@ -56,11 +56,12 @@ function Stepper({ step }: { step: 1 | 2 }) {
 
 // ─── Competition selector ─────────────────────────────────────────────────────
 
-type CompetitionType = "wc_2026" | "ekstraklasa_2526";
+type CompetitionType = "wc_2026" | "mls_2026" | "ekstraklasa_2526";
 
-const COMPETITIONS: { value: CompetitionType; name: string; subtitle: string }[] = [
-    { value: "wc_2026",          name: "MŚ FIFA 2026", subtitle: "Mundial 2026" },
-    { value: "ekstraklasa_2526", name: "Ekstraklasa",  subtitle: "Sezon 2025/2026" },
+const COMPETITIONS: { value: CompetitionType; name: string; subtitle: string; flag: string }[] = [
+    { value: "wc_2026",          name: "MŚ FIFA 2026", subtitle: "Mundial 2026",          flag: "🌍" },
+    { value: "mls_2026",         name: "MLS 2026",     subtitle: "Major League Soccer",   flag: "🇺🇸" },
+    { value: "ekstraklasa_2526", name: "Ekstraklasa",  subtitle: "Sezon 2025/2026",       flag: "🇵🇱" },
 ];
 
 function CompetitionSelector({ value, onChange }: { value: CompetitionType; onChange: (v: CompetitionType) => void }) {
@@ -74,14 +75,18 @@ function CompetitionSelector({ value, onChange }: { value: CompetitionType; onCh
                         type="button"
                         onClick={() => onChange(c.value)}
                         className={cx(
-                            "flex w-full flex-col gap-0.5 rounded-xl border p-4 text-left transition",
+                            "flex w-full items-center gap-3 rounded-xl border p-4 text-left transition",
                             selected
-                                ? "border-primary bg-secondary"
+                                ? "border-brand-solid bg-brand-primary ring-2 ring-brand-solid/20"
                                 : "border-secondary bg-primary hover:bg-secondary",
                         )}
                     >
-                        <p className="text-base font-semibold text-primary">{c.name}</p>
-                        <p className="text-sm text-tertiary">{c.subtitle}</p>
+                        <span className="text-2xl">{c.flag}</span>
+                        <div className="flex flex-col gap-0.5">
+                            <p className="text-base font-semibold text-primary">{c.name}</p>
+                            <p className="text-sm text-tertiary">{c.subtitle}</p>
+                        </div>
+                        {selected && <Check className="ml-auto size-5 shrink-0 text-brand-primary" />}
                     </button>
                 );
             })}
@@ -238,62 +243,80 @@ export function CreateGroupModal({ buttonClassName }: { buttonClassName?: string
             </Button>
 
             {isOpen && (
-                <div className="fixed inset-0 z-50 flex flex-col bg-primary">
-                    {/* Header */}
-                    <div className="flex items-center justify-between border-b border-secondary px-5 py-4">
-                        <h2 className="text-xl font-bold text-primary">
-                            {step === 3 ? "Zaproszenie" : "Nowa grupa"}
-                        </h2>
-                        <button
-                            type="button"
-                            onClick={handleClose}
-                            className="flex size-10 items-center justify-center rounded-full bg-secondary text-primary transition hover:bg-secondary_hover"
-                        >
-                            <X className="size-5" />
-                        </button>
-                    </div>
+                <>
+                    {/* Desktop backdrop */}
+                    <div
+                        className="fixed inset-0 z-50 hidden bg-black/40 lg:block"
+                        onClick={handleClose}
+                    />
 
-                    {/* Stepper — steps 1 & 2 only */}
-                    {step < 3 && <Stepper step={step as 1 | 2} />}
+                    {/* Panel — full-screen on mobile, max-w-2xl centered on desktop */}
+                    <div className="fixed inset-0 z-50 flex flex-col bg-primary
+                                    lg:inset-y-0 lg:left-1/2 lg:right-auto lg:w-full lg:max-w-2xl lg:-translate-x-1/2
+                                    lg:border-x lg:border-secondary lg:shadow-2xl">
 
-                    {/* Step 1 — competition */}
-                    {step === 1 && (
-                        <div className="flex flex-1 flex-col gap-4 px-5 py-4">
-                            <CompetitionSelector value={competition} onChange={setCompetition} />
-                            <div className="mt-auto">
-                                <Button onClick={() => setStep(2)} className="w-full" size="lg">
-                                    Dalej
-                                </Button>
-                            </div>
+                        {/* Header */}
+                        <div className="flex shrink-0 items-center justify-between border-b border-secondary px-5 py-4">
+                            <h2 className="text-xl font-bold text-primary">
+                                {step === 3 ? "Zaproszenie" : "Nowa grupa"}
+                            </h2>
+                            <button
+                                type="button"
+                                onClick={handleClose}
+                                className="flex size-10 items-center justify-center rounded-full bg-secondary text-primary transition hover:bg-secondary_hover"
+                            >
+                                <X className="size-5" />
+                            </button>
                         </div>
-                    )}
 
-                    {/* Step 2 — avatar + name */}
-                    {step === 2 && (
-                        <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-4 px-5 py-4">
-                            <CompactAvatarPicker previewUrl={avatarPreview} onFileSelect={handleFileSelect} />
-                            <Input name="name" label="Nazwa grupy" placeholder="np. Drużyna z biura" isRequired />
-                            {error && (
-                                <p className="rounded-lg bg-error-primary px-3 py-2 text-sm text-error-primary">
-                                    {error}
-                                </p>
-                            )}
-                            <div className="mt-auto flex gap-3">
-                                <Button color="secondary" onClick={() => setStep(1)} type="button" iconLeading={ChevronLeft} className="flex-1" size="lg">
-                                    Wróć
-                                </Button>
-                                <Button type="submit" isLoading={isLoading} showTextWhileLoading className="flex-1" size="lg">
-                                    Utwórz
-                                </Button>
+                        {/* Stepper — steps 1 & 2 only */}
+                        {step < 3 && <Stepper step={step as 1 | 2} />}
+
+                        {/* Step 1 — competition */}
+                        {step === 1 && (
+                            <div className="flex flex-1 flex-col overflow-hidden">
+                                <div className="flex-1 overflow-y-auto px-5 py-4">
+                                    <CompetitionSelector value={competition} onChange={setCompetition} />
+                                </div>
+                                <div className="shrink-0 border-t border-secondary px-5 py-4">
+                                    <Button onClick={() => setStep(2)} className="w-full" size="lg">
+                                        Dalej
+                                    </Button>
+                                </div>
                             </div>
-                        </form>
-                    )}
+                        )}
 
-                    {/* Step 3 — invite */}
-                    {step === 3 && createdGroup && (
-                        <InviteScreen group={createdGroup} onClose={handleClose} />
-                    )}
-                </div>
+                        {/* Step 2 — avatar + name */}
+                        {step === 2 && (
+                            <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
+                                {/* Scrollable content — keyboard-safe */}
+                                <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4">
+                                    <CompactAvatarPicker previewUrl={avatarPreview} onFileSelect={handleFileSelect} />
+                                    <Input name="name" label="Nazwa grupy" placeholder="np. Drużyna z biura" isRequired />
+                                    {error && (
+                                        <p className="rounded-lg bg-error-primary px-3 py-2 text-sm text-error-primary">
+                                            {error}
+                                        </p>
+                                    )}
+                                </div>
+                                {/* Buttons outside scroll area — always visible above keyboard */}
+                                <div className="shrink-0 border-t border-secondary px-5 py-4 flex gap-3">
+                                    <Button color="secondary" onClick={() => setStep(1)} type="button" iconLeading={ChevronLeft} className="flex-1" size="lg">
+                                        Wróć
+                                    </Button>
+                                    <Button type="submit" isLoading={isLoading} showTextWhileLoading className="flex-1" size="lg">
+                                        Utwórz
+                                    </Button>
+                                </div>
+                            </form>
+                        )}
+
+                        {/* Step 3 — invite */}
+                        {step === 3 && createdGroup && (
+                            <InviteScreen group={createdGroup} onClose={handleClose} />
+                        )}
+                    </div>
+                </>
             )}
         </>
     );

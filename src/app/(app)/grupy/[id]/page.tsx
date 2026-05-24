@@ -225,10 +225,16 @@ function sortStandings(teams: TeamStats[]) {
 
 async function GrupyTab({ competitionType = "wc_2026" }: { competitionType?: string }) {
     const isEkstraklasa = competitionType === "ekstraklasa_2526";
+    const isMls = competitionType === "mls_2026";
 
     // ── Ekstraklasa: live standings from apifootball.com ─────────────────────
     if (isEkstraklasa) {
         return <LiveStandings leagueId="259" title="Ekstraklasa PKO BP 2025/26" />;
+    }
+
+    // ── MLS: live standings from apifootball.com ─────────────────────────────
+    if (isMls) {
+        return <LiveStandings leagueId="332" title="MLS 2026" />;
     }
 
     // ── WC: group-by-group display ────────────────────────────────────────────
