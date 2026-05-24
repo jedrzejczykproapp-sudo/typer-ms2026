@@ -74,6 +74,56 @@ function resolveTeamName(apiName: string): string {
     return EXPLICIT_MAP[n] ?? EKSTRAKLASA_NORM_MAP.get(n) ?? apiName;
 }
 
+export type OddsMapByTeams = Map<string, MatchOdds>;
+
+/** Fetch odds by the-odds-api.com sport key, keyed by "normHome|normAway" */
+export async function getOddsByKey(oddsKey: string): Promise<OddsMapByTeams> {
+    const key = process.env.ODDS_API_KEY;
+    if (!key) return new Map();
+    try {
+        const res = await fetch(
+            `https://api.the-odds-api.com/v4/sports/${oddsKey}/odds/?apiKey=${key}&regions=eu&markets=h2h&oddsFormat=decimal`,
+            { next: { revalidate: 900 } }, // 15 min cache
+        );
+        if (!res.ok) return new Map();
+        const data = await res.json();
+        const map: OddsMapByTeams = new Map();
+        for (const event of data) {
+            const bookie = event.bookmakers?.[0];
+            const h2h = bookie?.markets?.find((m: { key: string }) => m.key === "h2h");
+            if (!h2h) continue;
+            const homeOdds = h2h.outcomes.find((o: { name: string }) => o.name === event.home_team)?.price;
+            const drawOdds = h2h.outcomes.find((o: { name: string }) => o.name === "Draw")?.price;
+            const awayOdds = h2h.outcomes.find((o: { name: string }) => o.name === event.away_team)?.price;
+            if (homeOdds && drawOdds && awayOdds) {
+                const entry: MatchOdds = { home: homeOdds, draw: drawOdds, away: awayOdds };
+                const rawKey = `${norm(event.home_team)}|${norm(event.away_team)}`;
+                const expKey = `${expandName(event.home_team)}|${expandName(event.away_team)}`;
+                map.set(rawKey, entry);
+                if (expKey !== rawKey) map.set(expKey, entry);
+            }
+        }
+        return map;
+    } catch {
+        return new Map();
+    }
+}
+
+function expandName(s: string): string {
+    return norm(s)
+        .replace(/\butd\b/g, "united")
+        .replace(/\bman\b(?=\s)/g, "manchester")
+        .replace(/\bspurs\b/g, "tottenham hotspur")
+        .replace(/\bwolves\b/g, "wolverhampton wanderers")
+        .replace(/^leeds$/, "leeds united")
+        .replace(/^newcastle$/, "newcastle united")
+        .replace(/^west ham$/, "west ham united")
+        .replace(/^nottm forest$/, "nottingham forest")
+        .replace(/\b(fc|cf|sc|ac|as|ss|us|rc|rcd|cd|ud|sd|ca|ra|afc|if)\b/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
 export async function getOdds(competitionType: string): Promise<Map<string, MatchOdds>> {
     const key = process.env.ODDS_API_KEY;
     if (!key) return new Map();

@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ZakladDetail } from "./zaklad-detail";
+import { getOddsByKey } from "@/lib/odds";
+import { LEAGUE_BY_ID } from "@/lib/top-leagues";
+import { getStadium } from "@/lib/stadiums";
 
 interface Props {
     params: Promise<{ id: string }>;
@@ -66,8 +69,62 @@ export default async function ZakladPage({ params }: Props) {
         .select("id, fixture_id, user_id, predicted_home, predicted_away, points")
         .eq("zaklad_id", id);
 
+    // Fetch live odds for upcoming fixtures (per league, parallel)
+    const now = new Date();
+    const rawFixtures = zaklad.zaklad_fixtures as {
+        id: string; league_id: string; match_date: string;
+        home_name: string; away_name: string;
+        odds_home: number | null; odds_draw: number | null; odds_away: number | null;
+        venue: string | null;
+        [key: string]: unknown;
+    }[];
+
+    const upcomingLeagueIds = [
+        ...new Set(
+            rawFixtures
+                .filter((f) => new Date(f.match_date.replace(" ", "T")) > now)
+                .map((f) => f.league_id),
+        ),
+    ];
+
+    // Fetch odds for all relevant leagues in parallel
+    const oddsResults = await Promise.all(
+        upcomingLeagueIds.map(async (leagueId) => {
+            const league = LEAGUE_BY_ID.get(leagueId);
+            if (!league) return { leagueId, map: new Map() };
+            return { leagueId, map: await getOddsByKey(league.oddsKey) };
+        }),
+    );
+    const oddsByLeague = new Map(oddsResults.map((r) => [r.leagueId, r.map]));
+
+    function normForOdds(s: string) {
+        return s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[łŁ]/g, "l").toLowerCase().trim();
+    }
+
+    // Enrich fixtures: inject live odds + venue fallback
+    const enrichedFixtures = rawFixtures.map((f) => {
+        const matchTime = new Date(f.match_date.replace(" ", "T"));
+        const isUpcoming = matchTime > now;
+
+        if (!isUpcoming) return f;
+
+        const oddsMap = oddsByLeague.get(f.league_id);
+        const homeKey = normForOdds(f.home_name);
+        const awayKey = normForOdds(f.away_name);
+        const liveOdds = oddsMap?.get(`${homeKey}|${awayKey}`) ?? null;
+
+        return {
+            ...f,
+            odds_home: liveOdds?.home ?? f.odds_home,
+            odds_draw: liveOdds?.draw ?? f.odds_draw,
+            odds_away: liveOdds?.away ?? f.odds_away,
+            venue: f.venue || getStadium(f.home_name) || null,
+        };
+    });
+
     const zakladWithProfiles = {
         ...zaklad,
+        zaklad_fixtures: enrichedFixtures,
         zaklad_members: membersWithProfiles,
     };
 
