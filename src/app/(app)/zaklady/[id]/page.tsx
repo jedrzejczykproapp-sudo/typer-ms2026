@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { ZakladDetail } from "./zaklad-detail";
 import { getOddsByKey } from "@/lib/odds";
 import { LEAGUE_BY_ID } from "@/lib/top-leagues";
@@ -210,6 +211,23 @@ export default async function ZakladPage({ params }: Props) {
         zaklad_fixtures: enrichedFixtures,
         zaklad_members: membersWithProfiles,
     };
+
+    // Auto-finish: if all fixtures ended > 5h ago and the zakład is still "active", mark it finished.
+    // This handles the case where the sync-fixture route was never triggered after the last match ended.
+    // (match_date stored as Poland CEST = UTC+2; subtract 2h to get UTC, add 5h for max match length)
+    if (zaklad.status === "active" && enrichedFixtures.length > 0) {
+        const nowMs = Date.now();
+        const allEnded = enrichedFixtures.every((f) => {
+            const naiveMs = new Date((f.match_date as string).replace(" ", "T")).getTime();
+            const doneAtMs = naiveMs - 2 * 60 * 60 * 1000 + 5 * 60 * 60 * 1000;
+            return nowMs >= doneAtMs;
+        });
+        if (allEnded) {
+            const admin = createAdminClient();
+            await admin.from("zaklady").update({ status: "finished" }).eq("id", id).eq("status", "active");
+            (zakladWithProfiles as { status: string }).status = "finished";
+        }
+    }
 
     return (
         <ZakladDetail

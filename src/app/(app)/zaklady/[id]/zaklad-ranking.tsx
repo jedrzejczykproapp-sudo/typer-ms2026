@@ -31,12 +31,10 @@ interface Props {
     userId: string;
 }
 
+const FINISHED_STATUSES = new Set(["finished", "FT", "AET", "PEN", "Finished"]);
+
 function calcPoints(pred: Prediction, fixture: Fixture): { points: number; isExact: boolean } {
-    const isFinished =
-        fixture.match_status === "FT" ||
-        fixture.match_status === "AET" ||
-        fixture.match_status === "PEN" ||
-        fixture.match_status === "Finished";
+    const isFinished = FINISHED_STATUSES.has(fixture.match_status);
     if (!isFinished || fixture.home_score === "" || fixture.away_score === "") {
         return { points: 0, isExact: false };
     }

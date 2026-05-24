@@ -74,13 +74,25 @@ export async function POST(
     if (result.matchStatus === "finished" && fixture.zaklad_id) {
         const { data: siblings } = await admin
             .from("zaklad_fixtures")
-            .select("id, match_status")
+            .select("id, match_status, match_date")
             .eq("zaklad_id", fixture.zaklad_id);
 
-        // Treat the current fixture as "finished" even if DB hasn't flushed yet
-        const allDone = siblings?.every((s) =>
-            s.id === fixtureId ? true : FINISHED_STATUSES.includes(s.match_status),
-        );
+        const nowMs = Date.now();
+
+        // A sibling counts as "done" if:
+        //   a) its DB status is finished, OR
+        //   b) its match_date (Poland CEST = UTC+2) + 5h has passed
+        //      (90min match + ET + 2h timezone buffer + 30min extra)
+        const siblingDone = (s: { id: string; match_status: string; match_date: string }) => {
+            if (s.id === fixtureId) return true; // just updated
+            if (FINISHED_STATUSES.includes(s.match_status)) return true;
+            // treat stored time as naive, subtract 2h to get UTC, add 5h for max match length
+            const naiveMs = new Date((s.match_date ?? "").replace(" ", "T")).getTime();
+            const doneAtMs = naiveMs - 2 * 60 * 60 * 1000 + 5 * 60 * 60 * 1000;
+            return nowMs >= doneAtMs;
+        };
+
+        const allDone = siblings?.every(siblingDone);
 
         if (allDone && siblings?.length) {
             const { error: finErr } = await admin
