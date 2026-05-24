@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { CalendarCheck01, ChevronRight, Users01 } from "@untitledui/icons";
+import { CalendarCheck01, ChevronRight, Ticket01, Users01 } from "@untitledui/icons";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Avatar } from "@/components/base/avatar/avatar";
@@ -38,9 +38,9 @@ function groupMatchesByStage(matches: Match[]) {
 export default async function KontoPage({
     searchParams,
 }: {
-    searchParams: Promise<{ tab?: string; group?: string }>;
+    searchParams: Promise<{ tab?: string }>;
 }) {
-    const { tab = "typowania", group: groupParam } = await searchParams;
+    const { tab = "wydarzenia" } = await searchParams;
 
     const supabase = await createClient();
     const {
@@ -69,10 +69,6 @@ export default async function KontoPage({
         avatar_url: string | null;
         competition_type: string;
     }[];
-
-    const activeGroup = groups.length > 0
-        ? (groupParam ? groups.find((g) => g.id === groupParam) ?? groups[0] : groups[0])
-        : null;
 
     // Check if there are matches today (upcoming or live) for the pulsing dot
     const todayUtc = new Date().toISOString().slice(0, 10);
@@ -104,15 +100,16 @@ export default async function KontoPage({
             <KontoTabPanel
                 defaultTab={tab}
                 hasTodayMatches={hasTodayMatches}
-                typowaniaContent={<TypowaniaTab groups={groups} />}
-                statystykiContent={<StatystykiTab userId={user.id} groups={groups} />}
+                wydarzeniaContent={<WydarzeniaTab groups={groups} />}
+                zakladyContent={<ZakladyTab userId={user.id} />}
                 grupyContent={<GrupyTab groups={groups} />}
+                statystykiContent={<StatystykiTab userId={user.id} groups={groups} />}
             />
         </div>
     );
 }
 
-// ─── Typowania tab ────────────────────────────────────────────────────────────
+// ─── Wydarzenia tab ───────────────────────────────────────────────────────────
 
 function dateLabel(dateStr: string): string {
     const day = dateStr.slice(0, 10);
@@ -126,7 +123,7 @@ function dateLabel(dateStr: string): string {
         .replace(".", "");
 }
 
-async function TypowaniaTab({
+async function WydarzeniaTab({
     groups,
 }: {
     groups: { id: string; name: string; avatar_url: string | null; competition_type: string }[];
@@ -201,6 +198,92 @@ function EmptyState({ icon, title, description }: { icon: Parameters<typeof Feat
                 <p className="text-sm text-tertiary">{description}</p>
             </div>
             <CreateGroupModal />
+        </div>
+    );
+}
+
+// ─── Zakłady tab ─────────────────────────────────────────────────────────────
+
+function formatDate(dateStr: string) {
+    return new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "short", year: "numeric" }).format(
+        new Date(dateStr),
+    );
+}
+
+async function ZakladyTab({ userId }: { userId: string }) {
+    const supabase = await createClient();
+
+    const { data: memberships } = await supabase
+        .from("zaklad_members")
+        .select("zaklad_id, zaklady(id, number, status, created_at, zaklad_fixtures(id), zaklad_members(user_id))")
+        .eq("user_id", userId)
+        .order("joined_at", { ascending: false });
+
+    type ZakladRow = {
+        id: string;
+        number: number;
+        status: "active" | "finished";
+        created_at: string;
+        zaklad_fixtures: { id: string }[];
+        zaklad_members: { user_id: string }[];
+    };
+
+    const zaklady = (memberships?.map((m) => m.zaklady).filter(Boolean) ?? []) as unknown as ZakladRow[];
+
+    if (zaklady.length === 0) {
+        return (
+            <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed border-secondary bg-primary py-16 text-center">
+                <div className="flex size-12 items-center justify-center rounded-xl bg-secondary">
+                    <Ticket01 className="size-6 text-tertiary" />
+                </div>
+                <div>
+                    <p className="font-semibold text-primary">Brak zakładów</p>
+                    <p className="mt-1 text-sm text-tertiary">Wybierz mecze i utwórz swój pierwszy zakład.</p>
+                </div>
+                <Link
+                    href="/mecze"
+                    className="rounded-xl bg-brand-solid px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+                >
+                    Przeglądaj mecze
+                </Link>
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex flex-col gap-2">
+            {zaklady.map((z) => (
+                <Link
+                    key={z.id}
+                    href={`/zaklady/${z.id}`}
+                    className="flex items-center gap-3 rounded-xl border border-secondary bg-primary px-4 py-3 shadow-xs transition hover:bg-primary_hover"
+                >
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-secondary">
+                        <Ticket01 className="size-5 text-fg-brand-primary" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                            <p className="font-semibold text-primary">Zakład #{z.number}</p>
+                            {z.status === "active" && (
+                                <span className="rounded-full bg-success-secondary px-2 py-0.5 text-xs font-medium text-success-primary">
+                                    Aktywny
+                                </span>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-tertiary">
+                            <span>{z.zaklad_fixtures.length} {z.zaklad_fixtures.length === 1 ? "mecz" : "meczów"}</span>
+                            <span>·</span>
+                            <span className="flex items-center gap-1">
+                                <Users01 className="size-3" />
+                                {z.zaklad_members.length}
+                            </span>
+                            <span>·</span>
+                            <span>{formatDate(z.created_at)}</span>
+                        </div>
+                    </div>
+                    <ChevronRight className="size-4 shrink-0 text-fg-quaternary" />
+                </Link>
+            ))}
         </div>
     );
 }

@@ -97,8 +97,10 @@ export function AppNav({ profileSrc, profileInits = "?" }: Props) {
                     >
                         {profileSrc || profileInits !== "?" ? (
                             <div className={cx(
-                                "rounded-full transition duration-100",
-                                isProfileActive ? "ring-2 ring-fg-brand-primary" : "",
+                                "rounded-full p-0.5 transition duration-100",
+                                isProfileActive
+                                    ? "ring-2 ring-fg-brand-primary"
+                                    : "ring-2 ring-transparent",
                             )}>
                                 <Avatar
                                     src={profileSrc ?? undefined}

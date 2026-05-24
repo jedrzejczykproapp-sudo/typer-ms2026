@@ -3,8 +3,9 @@
 import { useState, type ReactNode } from "react";
 
 const TABS = [
-    { key: "typowania", label: "Zakłady" },
-    { key: "grupy", label: "Grupy" },
+    { key: "wydarzenia", label: "Wydarzenia" },
+    { key: "zaklady",    label: "Zakłady"    },
+    { key: "grupy",      label: "Grupy"      },
     { key: "statystyki", label: "Statystyki" },
 ] as const;
 
@@ -13,21 +14,23 @@ type TabKey = (typeof TABS)[number]["key"];
 interface KontoTabPanelProps {
     defaultTab: string;
     hasTodayMatches: boolean;
-    typowaniaContent: ReactNode;
-    statystykiContent: ReactNode;
+    wydarzeniaContent: ReactNode;
+    zakladyContent: ReactNode;
     grupyContent: ReactNode;
+    statystykiContent: ReactNode;
 }
 
 export function KontoTabPanel({
     defaultTab,
     hasTodayMatches,
-    typowaniaContent,
-    statystykiContent,
+    wydarzeniaContent,
+    zakladyContent,
     grupyContent,
+    statystykiContent,
 }: KontoTabPanelProps) {
     const isValid = TABS.some((t) => t.key === defaultTab);
     const [activeTab, setActiveTab] = useState<TabKey>(
-        (isValid ? defaultTab : "typowania") as TabKey,
+        (isValid ? defaultTab : "wydarzenia") as TabKey,
     );
 
     function switchTab(tab: TabKey) {
@@ -53,17 +56,18 @@ export function KontoTabPanel({
                         }`}
                     >
                         {label}
-                        {key === "typowania" && hasTodayMatches && (
-                            <span className="absolute right-3 top-1/2 size-1.5 -translate-y-1/2 animate-pulse rounded-full bg-brand-solid" />
+                        {key === "wydarzenia" && hasTodayMatches && (
+                            <span className="absolute right-2 top-1/2 size-1.5 -translate-y-1/2 animate-pulse rounded-full bg-brand-solid" />
                         )}
                     </button>
                 ))}
             </div>
 
-            {/* Panels — all pre-rendered server-side, toggled via CSS */}
-            <div className={activeTab !== "typowania" ? "hidden" : undefined}>{typowaniaContent}</div>
-            <div className={activeTab !== "grupy" ? "hidden" : undefined}>{grupyContent}</div>
-            <div className={activeTab !== "statystyki" ? "hidden" : undefined}>{statystykiContent}</div>
+            {/* Panels */}
+            <div className={activeTab !== "wydarzenia"  ? "hidden" : undefined}>{wydarzeniaContent}</div>
+            <div className={activeTab !== "zaklady"     ? "hidden" : undefined}>{zakladyContent}</div>
+            <div className={activeTab !== "grupy"       ? "hidden" : undefined}>{grupyContent}</div>
+            <div className={activeTab !== "statystyki"  ? "hidden" : undefined}>{statystykiContent}</div>
         </div>
     );
 }
