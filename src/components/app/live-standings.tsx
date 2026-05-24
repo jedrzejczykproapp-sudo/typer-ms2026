@@ -86,8 +86,7 @@ export function LiveStandings({ leagueId = "259", title = "Ekstraklasa PKO BP 20
             </div>
 
             {/* Column headers */}
-            <div className="grid grid-cols-[28px_1fr_28px_40px_24px_24px_24px_52px] items-center border-b border-secondary px-3 py-1.5">
-                <span />
+            <div className="grid grid-cols-[1fr_28px_40px_24px_24px_24px_52px] items-center border-b border-secondary px-3 py-1.5">
                 <span className="text-xs font-medium uppercase tracking-wide text-quaternary">Drużyna</span>
                 <span className="text-center text-xs font-medium uppercase tracking-wide text-quaternary">M</span>
                 <span className="text-center text-xs font-medium uppercase tracking-wide text-quaternary">Pkt</span>
@@ -112,13 +111,10 @@ export function LiveStandings({ leagueId = "259", title = "Ekstraklasa PKO BP 20
                 return (
                     <div
                         key={row.team_id}
-                        className={`grid grid-cols-[28px_1fr_28px_40px_24px_24px_24px_52px] items-center px-3 py-2 ${
+                        className={`grid grid-cols-[1fr_28px_40px_24px_24px_24px_52px] items-center px-3 py-2 ${
                             idx < rows.length - 1 ? "border-b border-secondary" : ""
                         }`}
                     >
-                        {/* Position */}
-                        <span className="text-center text-xs tabular-nums text-tertiary">{row.place}</span>
-
                         {/* Crest + name */}
                         <div className="flex min-w-0 items-center gap-2">
                             {crestUrl ? (

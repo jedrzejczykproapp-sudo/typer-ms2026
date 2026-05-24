@@ -99,8 +99,7 @@ export function WcGroupTable() {
                     </div>
 
                     {/* Column headers */}
-                    <div className="grid grid-cols-[auto_1fr_repeat(5,auto)] items-center gap-x-3 border-b border-secondary px-3 py-1.5">
-                        <span className="w-4 text-center text-[10px] text-quaternary">#</span>
+                    <div className="grid grid-cols-[1fr_repeat(5,auto)] items-center gap-x-3 border-b border-secondary px-3 py-1.5">
                         <span className="text-[10px] text-quaternary">Drużyna</span>
                         <span className="w-6 text-center text-[10px] text-quaternary">M</span>
                         <span className="w-6 text-center text-[10px] text-quaternary">W</span>
@@ -115,11 +114,8 @@ export function WcGroupTable() {
                         return (
                             <div
                                 key={team.team_id || team.team_name}
-                                className={`grid grid-cols-[auto_1fr_repeat(5,auto)] items-center gap-x-3 border-b border-secondary px-3 py-2.5 last:border-b-0 ${isQualified ? "bg-success-primary/20" : ""}`}
+                                className={`grid grid-cols-[1fr_repeat(5,auto)] items-center gap-x-3 border-b border-secondary px-3 py-2.5 last:border-b-0 ${isQualified ? "bg-success-primary/20" : ""}`}
                             >
-                                <span className="w-4 text-center text-xs font-bold tabular-nums text-tertiary">
-                                    {idx + 1}
-                                </span>
                                 <div className="flex min-w-0 items-center gap-2">
                                     <TeamFlag
                                         flagUrl={team.flag_url}

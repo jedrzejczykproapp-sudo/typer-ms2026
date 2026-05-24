@@ -668,14 +668,7 @@ export function ZakladFixtureCard({ fixture, zakladId, userId, myPrediction, myP
             {/* Teams row */}
             <div className="flex items-start gap-2">
                 <div className="flex flex-1 flex-col items-center gap-2">
-                    <div className="relative">
-                        <TeamLogo badge={homeBadge} name={homeName} />
-                        {fixture.home_position && (
-                            <span className="absolute -right-1 -bottom-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full border border-secondary bg-primary px-1 text-[10px] font-bold tabular-nums text-tertiary shadow-sm">
-                                {fixture.home_position}
-                            </span>
-                        )}
-                    </div>
+                    <TeamLogo badge={homeBadge} name={homeName} />
                     <span className="line-clamp-2 w-full text-center text-sm font-semibold leading-tight text-primary">
                         {homeName}
                     </span>
@@ -684,14 +677,7 @@ export function ZakladFixtureCard({ fixture, zakladId, userId, myPrediction, myP
                     <span className="text-xs font-medium text-quaternary">vs</span>
                 </div>
                 <div className="flex flex-1 flex-col items-center gap-2">
-                    <div className="relative">
-                        <TeamLogo badge={awayBadge} name={awayName} />
-                        {fixture.away_position && (
-                            <span className="absolute -right-1 -bottom-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full border border-secondary bg-primary px-1 text-[10px] font-bold tabular-nums text-tertiary shadow-sm">
-                                {fixture.away_position}
-                            </span>
-                        )}
-                    </div>
+                    <TeamLogo badge={awayBadge} name={awayName} />
                     <span className="line-clamp-2 w-full text-center text-sm font-semibold leading-tight text-primary">
                         {awayName}
                     </span>

@@ -111,11 +111,6 @@ export function FixtureCard({ fixture, odds, selectable, selected, onToggle }: P
                 <div className="flex flex-col items-center gap-1.5">
                     <div className="relative">
                         <TeamLogo badge={homeBadge} name={homeName} />
-                        {fixture.home.position && (
-                            <span className="absolute -right-1 -bottom-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary border border-secondary px-1 text-[10px] font-bold tabular-nums text-tertiary shadow-sm">
-                                {fixture.home.position}
-                            </span>
-                        )}
                     </div>
                     <span className="line-clamp-2 w-full text-center text-xs font-semibold leading-tight text-primary">
                         {homeName}
@@ -137,11 +132,6 @@ export function FixtureCard({ fixture, odds, selectable, selected, onToggle }: P
                 <div className="flex flex-col items-center gap-1.5">
                     <div className="relative">
                         <TeamLogo badge={awayBadge} name={awayName} />
-                        {fixture.away.position && (
-                            <span className="absolute -right-1 -bottom-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary border border-secondary px-1 text-[10px] font-bold tabular-nums text-tertiary shadow-sm">
-                                {fixture.away.position}
-                            </span>
-                        )}
                     </div>
                     <span className="line-clamp-2 w-full text-center text-xs font-semibold leading-tight text-primary">
                         {awayName}
