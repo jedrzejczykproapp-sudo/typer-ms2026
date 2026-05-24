@@ -130,9 +130,7 @@ export function ZakladRanking({ members, fixtures, predictions, userId }: Props)
                         return (
                             <div
                                 key={entry.userId}
-                                className={`flex items-center gap-3 border-b border-secondary px-4 py-3 last:border-b-0 ${
-                                    isMe ? "bg-brand-secondary" : ""
-                                }`}
+                                className="flex items-center gap-3 border-b border-secondary px-4 py-3 last:border-b-0"
                             >
                                 <span className="w-6 shrink-0 text-center text-sm font-bold text-tertiary">
                                     {rank}
