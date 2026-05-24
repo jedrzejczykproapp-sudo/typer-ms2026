@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { TOP_LEAGUES } from "@/lib/top-leagues";
+import { getStadium } from "@/lib/stadiums";
 
 const APIFOOTBALL_BASE = "https://apiv3.apifootball.com/";
 const ODDS_BASE = "https://api.the-odds-api.com/v4/sports";
@@ -35,11 +36,22 @@ function norm(s: string) {
 // Expand abbreviations and strip noise so "Manchester Utd" == "Manchester United"
 function expandName(s: string): string {
     return norm(s)
+        // abbreviation expansions
         .replace(/\butd\b/g, "united")
         .replace(/\bman\b(?=\s)/g, "manchester")
         .replace(/\bspurs\b/g, "tottenham hotspur")
         .replace(/\bwolves\b/g, "wolverhampton wanderers")
         .replace(/\bwolverhampton\b(?!\s+wanderers)/g, "wolverhampton wanderers")
+        // bare city names that lack "United" / "City" suffix in apifootball
+        .replace(/^leeds$/, "leeds united")
+        .replace(/^newcastle$/, "newcastle united")
+        .replace(/^west ham$/, "west ham united")
+        .replace(/^norwich$/, "norwich city")
+        .replace(/^sheffield utd$/, "sheffield united")
+        .replace(/^sheffield wed$/, "sheffield wednesday")
+        .replace(/^nottingham$/, "nottingham forest")
+        .replace(/^nottm forest$/, "nottingham forest")
+        // strip common prefixes/suffixes
         .replace(/\b(fc|cf|sc|ac|as|ss|us|rc|rcd|cd|ud|sd|ca|ra|afc|if)\b/g, "")
         .replace(/\s+/g, " ")
         .trim();
@@ -152,7 +164,7 @@ export async function GET() {
                         odds_home: matchOdds?.home ?? null,
                         odds_draw: matchOdds?.draw ?? null,
                         odds_away: matchOdds?.away ?? null,
-                        venue: e.match_stadium || null,
+                        venue: e.match_stadium || getStadium(e.match_hometeam_name ?? "") || null,
                     });
                 }
             }
