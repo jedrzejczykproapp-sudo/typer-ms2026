@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import { Check } from "@untitledui/icons";
+import { Button } from "@/components/base/buttons/button";
 import { cx } from "@/utils/cx";
 
 interface ZakladFixture {
@@ -103,7 +104,6 @@ function calcLiveState(matchDate: string): {
 } {
     const start = new Date(matchDate.replace(" ", "T")).getTime();
     const elapsed = (Date.now() - start) / 60000;
-
     if (elapsed <= 45) {
         return { minute: Math.max(1, Math.floor(elapsed)), half: 1, isHalftime: false, progress: (elapsed / 90) * 100 };
     }
@@ -126,10 +126,16 @@ function calcProvisionalPoints(ph: number, pa: number, ah: number, aa: number): 
 }
 
 export function ZakladFixtureCard({ fixture, zakladId, myPrediction, myPoints, onPredict }: Props) {
+    // Current UI scores
     const [homeScore, setHomeScore] = useState(myPrediction?.home ?? 0);
     const [awayScore, setAwayScore] = useState(myPrediction?.away ?? 0);
-    const [saved, setSaved] = useState(!!myPrediction);
+    // Last saved values — used to detect unsaved changes
+    const [savedHome, setSavedHome] = useState(myPrediction?.home ?? 0);
+    const [savedAway, setSavedAway] = useState(myPrediction?.away ?? 0);
+    const [hasSaved, setHasSaved] = useState(!!myPrediction);
+    const [justSaved, setJustSaved] = useState(false);
     const [saving, setSaving] = useState(false);
+
     const autoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const latestScores = useRef({ home: myPrediction?.home ?? 0, away: myPrediction?.away ?? 0 });
 
@@ -145,9 +151,12 @@ export function ZakladFixtureCard({ fixture, zakladId, myPrediction, myPoints, o
     const isLocked = isStarted;
     const hasScore = fixture.home_score !== "" && fixture.away_score !== "";
     const liveState = isLive ? calcLiveState(fixture.match_date) : null;
-    const hasPrediction = myPrediction !== null;
+    const hasPrediction = myPrediction !== null || hasSaved;
 
-    // Points display: use stored value, or compute from live/finished score
+    // Whether current scores differ from last saved
+    const hasChanged = homeScore !== savedHome || awayScore !== savedAway;
+
+    // Points display
     const displayPoints = (() => {
         if (myPoints !== null) return myPoints;
         if (isFinished && hasPrediction && hasScore) {
@@ -158,40 +167,47 @@ export function ZakladFixtureCard({ fixture, zakladId, myPrediction, myPoints, o
         return null;
     })();
 
-    const scheduleAutoSave = useCallback(() => {
-        if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
-        autoSaveRef.current = setTimeout(async () => {
-            const { home, away } = latestScores.current;
-            setSaving(true);
-            try {
-                await fetch(`/api/zaklady/${zakladId}/predict`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ fixture_id: fixture.id, predicted_home: home, predicted_away: away }),
-                });
-                setSaved(true);
-                setTimeout(() => setSaved(false), 2000);
-            } catch {
-                /* silent */
-            }
-            setSaving(false);
-        }, 700);
+    const doSave = useCallback(async (home: number, away: number) => {
+        setSaving(true);
+        try {
+            await fetch(`/api/zaklady/${zakladId}/predict`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ fixture_id: fixture.id, predicted_home: home, predicted_away: away }),
+            });
+            setSavedHome(home);
+            setSavedAway(away);
+            setHasSaved(true);
+            setJustSaved(true);
+            setTimeout(() => setJustSaved(false), 2000);
+        } catch {
+            /* silent */
+        }
+        setSaving(false);
     }, [zakladId, fixture.id]);
+
+    const scheduleAutoSave = useCallback((home: number, away: number) => {
+        if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
+        autoSaveRef.current = setTimeout(() => doSave(home, away), 700);
+    }, [doSave]);
 
     function handleHomeChange(v: number) {
         setHomeScore(v);
         latestScores.current = { home: v, away: latestScores.current.away };
         onPredict(v, latestScores.current.away);
-        setSaved(false);
-        scheduleAutoSave();
+        scheduleAutoSave(v, latestScores.current.away);
     }
 
     function handleAwayChange(v: number) {
         setAwayScore(v);
         latestScores.current = { home: latestScores.current.home, away: v };
         onPredict(latestScores.current.home, v);
-        setSaved(false);
-        scheduleAutoSave();
+        scheduleAutoSave(latestScores.current.home, v);
+    }
+
+    function handleSave() {
+        if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
+        doSave(homeScore, awayScore);
     }
 
     return (
@@ -201,7 +217,7 @@ export function ZakladFixtureCard({ fixture, zakladId, myPrediction, myPoints, o
                 isFinished ? "border-secondary" : "border-secondary shadow-xs",
             )}
         >
-            {/* Header: league (left) | live/finished badge (center) | date (right) */}
+            {/* Header: liga (left) | live/finished badge (center) | data (right) */}
             <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
                 <span className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-tertiary">
                     <span>{fixture.league_flag}</span>
@@ -223,7 +239,7 @@ export function ZakladFixtureCard({ fixture, zakladId, myPrediction, myPoints, o
                 <span className="text-right text-xs text-tertiary">{formatMatchDate(fixture.match_date)}</span>
             </div>
 
-            {/* Score row: inputs (upcoming) or actual score (live/finished) */}
+            {/* Score row */}
             <div className="flex items-center gap-2">
                 <div className="flex flex-1 justify-center">
                     {(isLive || isFinished) && hasScore ? (
@@ -242,7 +258,7 @@ export function ZakladFixtureCard({ fixture, zakladId, myPrediction, myPoints, o
                 </div>
             </div>
 
-            {/* Teams row: logo + name, centered under their score */}
+            {/* Teams row */}
             <div className="flex items-start gap-2">
                 <div className="flex flex-1 flex-col items-center gap-2">
                     <div className="relative">
@@ -320,7 +336,7 @@ export function ZakladFixtureCard({ fixture, zakladId, myPrediction, myPoints, o
                 </div>
             )}
 
-            {/* Odds row — upcoming only */}
+            {/* Odds row — only when upcoming */}
             {(fixture.odds_home || fixture.odds_draw || fixture.odds_away) && !isLocked && (
                 <div className="flex gap-2">
                     {[
@@ -331,10 +347,10 @@ export function ZakladFixtureCard({ fixture, zakladId, myPrediction, myPoints, o
                         value ? (
                             <div
                                 key={label}
-                                className="flex flex-1 items-center justify-center gap-1 rounded-md border border-secondary py-1"
+                                className="flex flex-1 items-center justify-center gap-1 rounded-md border border-secondary py-1.5"
                             >
                                 <span className="text-xs text-tertiary">{label}</span>
-                                <span className="text-xs font-semibold tabular-nums text-primary">
+                                <span className="text-sm font-semibold tabular-nums text-primary">
                                     {value.toFixed(2)}
                                 </span>
                             </div>
@@ -343,22 +359,26 @@ export function ZakladFixtureCard({ fixture, zakladId, myPrediction, myPoints, o
                 </div>
             )}
 
-            {/* Auto-save status indicator — upcoming only */}
+            {/* Save button — upcoming only */}
             {!isLocked && (
-                saving ? (
-                    <div className="flex h-9 w-full items-center justify-center gap-1.5 text-sm font-medium text-tertiary">
-                        <div className="size-3.5 animate-spin rounded-full border-2 border-brand-solid border-t-transparent" />
-                        Zapisuję…
-                    </div>
-                ) : saved ? (
+                hasSaved && !hasChanged ? (
                     <div className="flex h-9 w-full items-center justify-center gap-1.5 text-sm font-medium text-tertiary">
                         <Check className="size-4 shrink-0" />
                         Typ zapisany
                     </div>
                 ) : (
-                    <p className="text-center text-xs text-quaternary">
-                        Zmień wynik — zapisze się automatycznie
-                    </p>
+                    <Button
+                        size="sm"
+                        color={justSaved ? "secondary" : "primary"}
+                        isLoading={saving}
+                        showTextWhileLoading
+                        onClick={handleSave}
+                        isDisabled={saving}
+                        iconLeading={justSaved ? Check : undefined}
+                        className="w-full"
+                    >
+                        {justSaved ? "Zapisano!" : "Zapisz typ"}
+                    </Button>
                 )
             )}
 
