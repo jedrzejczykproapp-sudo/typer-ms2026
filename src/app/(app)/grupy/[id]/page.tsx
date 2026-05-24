@@ -110,9 +110,15 @@ async function TypowaniaTab({ groupId, userId }: { groupId: string; userId: stri
 
     // If no upcoming matches for a league competition, trigger sync and re-fetch
     const isLeagueComp = competitionType === "mls_2026" || competitionType === "ekstraklasa_2526";
+    const isWC = competitionType === "wc_2026";
     const hasUpcoming = initialMatches.some((m) => m.status !== "finished");
     let matches = initialMatches;
-    if (isLeagueComp && !hasUpcoming) {
+
+    const shouldSync =
+        (isLeagueComp && !hasUpcoming) ||          // league: no upcoming rounds
+        (isWC && initialMatches.length === 0);     // WC: no matches at all
+
+    if (shouldSync) {
         const synced = await ensureUpcomingMatches(competitionType);
         if (synced) {
             // Re-fetch after sync

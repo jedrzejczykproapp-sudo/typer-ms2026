@@ -117,8 +117,11 @@ function TeamFlag({ teamName, competitionType, flagUrl: directUrl, size = "md" }
     const isEkstraklasa = competitionType === "ekstraklasa_2526";
     const isMls = competitionType === "mls_2026";
     const isClub = isEkstraklasa || isMls;
-    // For club competitions use direct URL first, then library lookup
-    const url = directUrl ?? (isEkstraklasa ? getClubCrestUrl(teamName) : (!isMls ? getFlagUrl(teamName) : null));
+    // Club competitions: use stored badge URL (crest/logo)
+    // National team competitions (WC etc.): always use flagcdn.com via getFlagUrl
+    const url = isClub
+        ? (directUrl ?? (isEkstraklasa ? getClubCrestUrl(teamName) : null))
+        : getFlagUrl(teamName);
     const sizeClass = size === "md" ? "size-12" : "size-8";
 
     if (!url || imgError) {

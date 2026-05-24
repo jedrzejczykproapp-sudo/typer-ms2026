@@ -105,6 +105,13 @@ export function FixtureCard({ fixture, odds, selectable, selected, onToggle }: P
                 </div>
             </div>
 
+            {/* Venue */}
+            {fixture.venue && (
+                <p className="text-center text-[11px] font-medium uppercase tracking-wider text-quaternary">
+                    {fixture.venue}
+                </p>
+            )}
+
             {/* Teams row */}
             <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
                 {/* Home */}
