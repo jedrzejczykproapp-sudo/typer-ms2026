@@ -402,7 +402,7 @@ export function GroupSettingsMenu({
                                         className="flex items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-secondary"
                                     >
                                         <Share01 className="size-5 shrink-0 text-fg-tertiary" />
-                                        <p className="text-sm font-medium text-primary">Udostępnij grupę</p>
+                                        <p className="text-sm font-medium text-primary">Zaproś</p>
                                     </button>
 
                                     {/* Copy invite code */}

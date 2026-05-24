@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { cx } from "@/utils/cx";
+import { Trophy01 } from "@untitledui/icons";
+import { Avatar } from "@/components/base/avatar/avatar";
 
 interface Member {
     user_id: string;
@@ -30,21 +31,23 @@ interface Props {
     userId: string;
 }
 
-function calcPoints(pred: Prediction, fixture: Fixture): number {
+function calcPoints(pred: Prediction, fixture: Fixture): { points: number; isExact: boolean } {
     const isFinished =
         fixture.match_status === "FT" ||
         fixture.match_status === "AET" ||
         fixture.match_status === "PEN" ||
         fixture.match_status === "Finished";
-    if (!isFinished || fixture.home_score === "" || fixture.away_score === "") return 0;
+    if (!isFinished || fixture.home_score === "" || fixture.away_score === "") {
+        return { points: 0, isExact: false };
+    }
     const ah = parseInt(fixture.home_score);
     const aa = parseInt(fixture.away_score);
-    if (isNaN(ah) || isNaN(aa)) return 0;
+    if (isNaN(ah) || isNaN(aa)) return { points: 0, isExact: false };
     const ph = pred.predicted_home;
     const pa = pred.predicted_away;
-    if (ph === ah && pa === aa) return 3;
-    if (Math.sign(ph - pa) === Math.sign(ah - aa)) return 1;
-    return 0;
+    if (ph === ah && pa === aa) return { points: 3, isExact: true };
+    if (Math.sign(ph - pa) === Math.sign(ah - aa)) return { points: 1, isExact: false };
+    return { points: 0, isExact: false };
 }
 
 export function ZakladRanking({ members, fixtures, predictions, userId }: Props) {
@@ -53,22 +56,27 @@ export function ZakladRanking({ members, fixtures, predictions, userId }: Props)
             .map((m) => {
                 const memberPreds = predictions.filter((p) => p.user_id === m.user_id);
                 let points = 0;
-                let typed = 0;
+                let exact = 0;
+                let correct = 0;
 
                 for (const fixture of fixtures) {
                     const pred = memberPreds.find((p) => p.fixture_id === fixture.id);
                     if (!pred) continue;
-                    typed++;
 
-                    // Use stored points if available, otherwise calculate from score
                     if (pred.points !== null) {
                         points += pred.points;
+                        if (pred.points === 3) exact++;
+                        if (pred.points === 1) correct++;
                     } else {
-                        points += calcPoints(pred, fixture);
+                        const result = calcPoints(pred, fixture);
+                        points += result.points;
+                        if (result.isExact) exact++;
+                        else if (result.points === 1) correct++;
                     }
                 }
 
-                const inits = (m.profiles?.display_name ?? "?")
+                const name = m.profiles?.display_name ?? "Użytkownik";
+                const inits = name
                     .split(" ")
                     .map((w) => w[0])
                     .join("")
@@ -77,69 +85,88 @@ export function ZakladRanking({ members, fixtures, predictions, userId }: Props)
 
                 return {
                     userId: m.user_id,
-                    name: m.profiles?.display_name ?? "Użytkownik",
+                    name,
                     avatarUrl: m.profiles?.avatar_url ?? null,
                     inits,
                     points,
-                    typed,
-                    total: fixtures.length,
+                    exact,
+                    correct,
                 };
             })
-            .sort((a, b) => b.points - a.points || b.typed - a.typed);
+            .sort((a, b) => b.points - a.points || b.exact - a.exact || b.correct - a.correct);
     }, [members, fixtures, predictions]);
 
     return (
-        <div className="flex flex-col gap-2">
-            {ranking.map((entry, i) => {
-                const isMe = entry.userId === userId;
-                const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
+        <div className="overflow-hidden rounded-xl border border-secondary bg-primary shadow-xs">
+            {/* Header */}
+            <div className="border-b border-secondary px-4 py-3">
+                <h2 className="font-semibold text-primary">Ranking</h2>
+            </div>
 
-                return (
-                    <div
-                        key={entry.userId}
-                        className={cx(
-                            "flex items-center gap-3 rounded-xl border px-4 py-3",
-                            isMe ? "border-brand-solid bg-brand-secondary" : "border-secondary bg-primary",
-                        )}
-                    >
-                        {/* Position */}
-                        <span className="w-6 shrink-0 text-center text-sm font-bold text-tertiary">
-                            {medal ?? `${i + 1}.`}
-                        </span>
-
-                        {/* Avatar */}
-                        {entry.avatarUrl ? (
-                            <img
-                                src={entry.avatarUrl}
-                                alt={entry.name}
-                                className="size-8 shrink-0 rounded-full object-cover"
-                            />
-                        ) : (
-                            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-bold text-tertiary">
-                                {entry.inits}
-                            </div>
-                        )}
-
-                        {/* Name */}
-                        <div className="min-w-0 flex-1">
-                            <p className={cx("truncate text-sm font-semibold", isMe ? "text-fg-brand-primary" : "text-primary")}>
-                                {entry.name} {isMe && "(Ty)"}
-                            </p>
-                            <p className="text-xs text-tertiary">
-                                {entry.typed}/{entry.total} typów
-                            </p>
+            {ranking.length === 0 ? (
+                <div className="flex flex-col items-center gap-3 py-12 text-center">
+                    <Trophy01 className="size-10 text-fg-quaternary" />
+                    <p className="text-sm text-tertiary">Jeszcze nikt nie zdobył punktów.</p>
+                    <p className="text-xs text-quaternary">Punkty pojawią się po zakończeniu meczów.</p>
+                </div>
+            ) : (
+                <>
+                    {/* Column headers */}
+                    <div className="flex items-center gap-3 border-b border-secondary px-4 py-1.5">
+                        <div className="w-6 shrink-0" />
+                        <span className="min-w-0 flex-1 text-xs text-quaternary">Gracz</span>
+                        <div className="flex shrink-0 items-center gap-3">
+                            <span className="w-9 text-center text-xs text-quaternary">Dokł.</span>
+                            <span className="w-9 text-center text-xs text-quaternary">Wyg.</span>
+                            <span className="w-10 text-center text-xs font-semibold text-quaternary">Pkt</span>
                         </div>
-
-                        {/* Points */}
-                        <span className={cx(
-                            "shrink-0 text-lg font-bold tabular-nums",
-                            isMe ? "text-fg-brand-primary" : "text-primary",
-                        )}>
-                            {entry.points}
-                        </span>
                     </div>
-                );
-            })}
+
+                    {/* Rows */}
+                    {ranking.map((entry, i) => {
+                        const isMe = entry.userId === userId;
+                        const rank = i + 1;
+
+                        return (
+                            <div
+                                key={entry.userId}
+                                className={`flex items-center gap-3 border-b border-secondary px-4 py-3 last:border-b-0 ${
+                                    isMe ? "bg-brand-secondary" : ""
+                                }`}
+                            >
+                                <span className="w-6 shrink-0 text-center text-sm font-bold text-tertiary">
+                                    {rank}
+                                </span>
+
+                                <Avatar
+                                    initials={entry.inits}
+                                    src={entry.avatarUrl ?? undefined}
+                                    size="sm"
+                                />
+
+                                <p className="min-w-0 flex-1 truncate text-sm font-semibold text-primary">
+                                    {entry.name}
+                                    {isMe && (
+                                        <span className="ml-1 text-xs font-normal text-tertiary">(Ty)</span>
+                                    )}
+                                </p>
+
+                                <div className="flex shrink-0 items-center gap-3">
+                                    <span className="w-9 text-center text-sm tabular-nums text-primary">
+                                        {entry.exact}
+                                    </span>
+                                    <span className="w-9 text-center text-sm tabular-nums text-primary">
+                                        {entry.correct}
+                                    </span>
+                                    <span className="w-10 text-center text-base font-bold tabular-nums text-primary">
+                                        {entry.points}
+                                    </span>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </>
+            )}
         </div>
     );
 }

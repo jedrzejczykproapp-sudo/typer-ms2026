@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { X, DotsVertical, Copy01, CheckCircle, Trash01 } from "@untitledui/icons";
+import { X, DotsVertical, Share01, Check, Trash01 } from "@untitledui/icons";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://typerek.com";
@@ -110,16 +110,13 @@ export function ZakladSettingsMenu({ zakladId, zakladNumber, inviteCode, memberC
                                         className="flex items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-secondary"
                                     >
                                         {copied ? (
-                                            <CheckCircle className="size-5 shrink-0 text-success-primary" />
+                                            <Check className="size-5 shrink-0 text-success-primary" />
                                         ) : (
-                                            <Copy01 className="size-5 shrink-0 text-fg-tertiary" />
+                                            <Share01 className="size-5 shrink-0 text-fg-tertiary" />
                                         )}
-                                        <div>
-                                            <p className="text-sm font-medium text-primary">
-                                                {copied ? "Skopiowano!" : "Zaproś znajomych"}
-                                            </p>
-                                            <p className="text-xs text-tertiary">Skopiuj link zaproszenia do zakładu</p>
-                                        </div>
+                                        <p className="text-sm font-medium text-primary">
+                                            {copied ? "Skopiowano!" : "Zaproś"}
+                                        </p>
                                     </button>
 
                                     {/* Anuluj — tylko twórca */}
