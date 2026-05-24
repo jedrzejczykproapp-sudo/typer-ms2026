@@ -1,3 +1,4 @@
+/** ISO 3166-1 alpha-2 codes (+ GB regional) for flagcdn.com */
 const TEAM_TO_CODE: Record<string, string> = {
     Albania: "al",
     Algeria: "dz",
@@ -16,7 +17,9 @@ const TEAM_TO_CODE: Record<string, string> = {
     "Costa Rica": "cr",
     Croatia: "hr",
     "Curaçao": "cw",
+    Curacao: "cw",
     "Czech Republic": "cz",
+    Czechia: "cz",
     Denmark: "dk",
     "DR Congo": "cd",
     Ecuador: "ec",
@@ -33,6 +36,7 @@ const TEAM_TO_CODE: Record<string, string> = {
     Indonesia: "id",
     Iran: "ir",
     Iraq: "iq",
+    Ireland: "ie",
     Israel: "il",
     "Ivory Coast": "ci",
     Jamaica: "jm",
@@ -46,6 +50,8 @@ const TEAM_TO_CODE: Record<string, string> = {
     Netherlands: "nl",
     "New Zealand": "nz",
     Nigeria: "ng",
+    "Northern Ireland": "gb-nir",
+    "North Macedonia": "mk",
     Norway: "no",
     Panama: "pa",
     Paraguay: "py",
@@ -66,8 +72,11 @@ const TEAM_TO_CODE: Record<string, string> = {
     Sweden: "se",
     Switzerland: "ch",
     Tanzania: "tz",
+    "Trinidad and Tobago": "tt",
+    "Trinidad & Tobago": "tt",
     Tunisia: "tn",
     Turkey: "tr",
+    Türkiye: "tr",
     Ukraine: "ua",
     "United States": "us",
     USA: "us",
@@ -78,6 +87,58 @@ const TEAM_TO_CODE: Record<string, string> = {
     Zimbabwe: "zw",
 };
 
+/**
+ * apifootball-specific aliases that differ from standard names.
+ * Key = what apifootball sends → canonical name used in TEAM_TO_CODE above.
+ */
+const APIFOOTBALL_ALIASES: Record<string, string> = {
+    "korea republic":          "South Korea",
+    "korea rep.":              "South Korea",
+    "republic of korea":       "South Korea",
+    "cote d'ivoire":           "Ivory Coast",
+    "côte d'ivoire":           "Ivory Coast",
+    "cote d`ivoire":           "Ivory Coast",
+    "côte d’ivoire": "Ivory Coast",
+    "ivory coast":             "Ivory Coast",
+    "turkiye":                 "Turkey",
+    "türkiye":                 "Turkey",
+    "bosnia and herzegovina":  "Bosnia & Herzegovina",
+    "bosnia herzegovina":      "Bosnia & Herzegovina",
+    "bosnia":                  "Bosnia & Herzegovina",
+    "dr congo":                "DR Congo",
+    "congo dr":                "DR Congo",
+    "democratic republic of the congo": "DR Congo",
+    "democratic republic congo": "DR Congo",
+    "trinidad and tobago":     "Trinidad and Tobago",
+    "trinidad & tobago":       "Trinidad and Tobago",
+    "trinidad tobago":         "Trinidad and Tobago",
+    "usa":                     "United States",
+    "united states":           "United States",
+    "curacao":                 "Curaçao",
+    "new zealand":             "New Zealand",
+    "saudi arabia":            "Saudi Arabia",
+    "south africa":            "South Africa",
+    "south korea":             "South Korea",
+    "north macedonia":         "North Macedonia",
+    "republic of ireland":     "Ireland",
+    "czech republic":          "Czech Republic",
+    "cape verde":              "Cape Verde",
+    "costa rica":              "Costa Rica",
+    "burkina faso":            "Burkina Faso",
+};
+
+// Extra entries not in the main map (filled after alias resolution)
+const EXTRA_CODES: Record<string, string> = {
+    "Burkina Faso": "bf",
+};
+
+/** Resolve an apifootball team name → canonical name */
+function resolve(name: string): string {
+    const lower = name.toLowerCase().trim();
+    return APIFOOTBALL_ALIASES[lower] ?? name;
+}
+
+/** Polish team name translations */
 const TEAM_TO_PL: Record<string, string> = {
     Albania: "Albania",
     Algeria: "Algieria",
@@ -88,6 +149,7 @@ const TEAM_TO_PL: Record<string, string> = {
     Bolivia: "Boliwia",
     "Bosnia & Herzegovina": "Bośnia i Hercegowina",
     Brazil: "Brazylia",
+    "Burkina Faso": "Burkina Faso",
     Cameroon: "Kamerun",
     Canada: "Kanada",
     "Cape Verde": "Wyspy Zielonego Przylądka",
@@ -113,6 +175,7 @@ const TEAM_TO_PL: Record<string, string> = {
     Indonesia: "Indonezja",
     Iran: "Iran",
     Iraq: "Irak",
+    Ireland: "Irlandia",
     Israel: "Izrael",
     "Ivory Coast": "Wybrzeże Kości Słoniowej",
     Jamaica: "Jamajka",
@@ -126,6 +189,8 @@ const TEAM_TO_PL: Record<string, string> = {
     Netherlands: "Holandia",
     "New Zealand": "Nowa Zelandia",
     Nigeria: "Nigeria",
+    "Northern Ireland": "Irlandia Płn.",
+    "North Macedonia": "Macedonia Płn.",
     Norway: "Norwegia",
     Panama: "Panama",
     Paraguay: "Paragwaj",
@@ -146,11 +211,11 @@ const TEAM_TO_PL: Record<string, string> = {
     Sweden: "Szwecja",
     Switzerland: "Szwajcaria",
     Tanzania: "Tanzania",
+    "Trinidad and Tobago": "Trynidad i Tobago",
     Tunisia: "Tunezja",
     Turkey: "Turcja",
     Ukraine: "Ukraina",
     "United States": "USA",
-    USA: "USA",
     Uruguay: "Urugwaj",
     Uzbekistan: "Uzbekistan",
     Venezuela: "Wenezuela",
@@ -159,12 +224,14 @@ const TEAM_TO_PL: Record<string, string> = {
 };
 
 export function getFlagUrl(teamName: string): string | null {
-    const code = TEAM_TO_CODE[teamName];
+    const canonical = resolve(teamName);
+    const code = TEAM_TO_CODE[canonical] ?? EXTRA_CODES[canonical];
     if (!code) return null;
-    // flagcdn.com covers all ISO 3166-1 codes including regional (gb-eng, gb-sct, cw, etc.)
+    // flagcdn.com — supports all ISO 3166-1 alpha-2 + regional (gb-eng, gb-sct, cw …)
     return `https://flagcdn.com/w80/${code}.png`;
 }
 
 export function getTeamNamePl(teamName: string): string {
-    return TEAM_TO_PL[teamName] ?? teamName;
+    const canonical = resolve(teamName);
+    return TEAM_TO_PL[canonical] ?? teamName;
 }
