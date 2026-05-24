@@ -74,19 +74,26 @@ async function fetchLeagueOdds(oddsKey: string): Promise<OddsMap> {
     if (!key) return new Map();
     try {
         const res = await fetch(
-            `${ODDS_BASE}/${oddsKey}/odds/?apiKey=${key}&regions=eu&markets=h2h&oddsFormat=decimal`,
+            `${ODDS_BASE}/${oddsKey}/odds/?apiKey=${key}&regions=eu,uk&markets=h2h&oddsFormat=decimal`,
             { next: { revalidate: 3600 } },
         );
         if (!res.ok) return new Map();
         const data = await res.json();
         const map: OddsMap = new Map();
         for (const event of data) {
-            const bookie = event.bookmakers?.[0];
-            const h2h = bookie?.markets?.find((m: { key: string }) => m.key === "h2h");
+            // Scan all bookmakers for first one that has h2h
+            type Outcome = { name: string; price: number };
+            type Market = { key: string; outcomes: Outcome[] };
+            type Bookie = { markets: Market[] };
+            let h2h: Market | undefined;
+            for (const bk of (event.bookmakers ?? []) as Bookie[]) {
+                h2h = bk.markets?.find((m) => m.key === "h2h");
+                if (h2h) break;
+            }
             if (!h2h) continue;
-            const homeOdds = h2h.outcomes.find((o: { name: string }) => o.name === event.home_team)?.price;
-            const drawOdds = h2h.outcomes.find((o: { name: string }) => o.name === "Draw")?.price;
-            const awayOdds = h2h.outcomes.find((o: { name: string }) => o.name === event.away_team)?.price;
+            const homeOdds = h2h.outcomes.find((o: Outcome) => o.name === event.home_team)?.price;
+            const drawOdds = h2h.outcomes.find((o: Outcome) => o.name === "Draw")?.price;
+            const awayOdds = h2h.outcomes.find((o: Outcome) => o.name === event.away_team)?.price;
             if (homeOdds && drawOdds && awayOdds) {
                 // Store under both raw-norm and expanded key so both lookups work
                 const rawKey = `${norm(event.home_team)}|${norm(event.away_team)}`;

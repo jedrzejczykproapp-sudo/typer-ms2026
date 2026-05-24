@@ -83,19 +83,26 @@ export async function getOddsByKey(oddsKey: string): Promise<OddsMapByTeams> {
     if (!key) return new Map();
     try {
         const res = await fetch(
-            `https://api.the-odds-api.com/v4/sports/${oddsKey}/odds/?apiKey=${key}&regions=eu&markets=h2h&oddsFormat=decimal`,
+            `https://api.the-odds-api.com/v4/sports/${oddsKey}/odds/?apiKey=${key}&regions=eu,uk&markets=h2h&oddsFormat=decimal`,
             { next: { revalidate: 900 } }, // 15 min cache
         );
         if (!res.ok) return new Map();
         const data = await res.json();
         const map: OddsMapByTeams = new Map();
         for (const event of data) {
-            const bookie = event.bookmakers?.[0];
-            const h2h = bookie?.markets?.find((m: { key: string }) => m.key === "h2h");
+            // Scan all bookmakers for first one that has h2h (not just [0])
+            type Outcome = { name: string; price: number };
+            type Market = { key: string; outcomes: Outcome[] };
+            type Bookie = { markets: Market[] };
+            let h2h: Market | undefined;
+            for (const bk of (event.bookmakers ?? []) as Bookie[]) {
+                h2h = bk.markets?.find((m) => m.key === "h2h");
+                if (h2h) break;
+            }
             if (!h2h) continue;
-            const homeOdds = h2h.outcomes.find((o: { name: string }) => o.name === event.home_team)?.price;
-            const drawOdds = h2h.outcomes.find((o: { name: string }) => o.name === "Draw")?.price;
-            const awayOdds = h2h.outcomes.find((o: { name: string }) => o.name === event.away_team)?.price;
+            const homeOdds = h2h.outcomes.find((o) => o.name === event.home_team)?.price;
+            const drawOdds = h2h.outcomes.find((o) => o.name === "Draw")?.price;
+            const awayOdds = h2h.outcomes.find((o) => o.name === event.away_team)?.price;
             if (homeOdds && drawOdds && awayOdds) {
                 const entry: MatchOdds = { home: homeOdds, draw: drawOdds, away: awayOdds };
                 const rawKey = `${norm(event.home_team)}|${norm(event.away_team)}`;
@@ -142,7 +149,7 @@ export async function getOdds(competitionType: string): Promise<Map<string, Matc
 
     try {
         const res = await fetch(
-            `https://api.the-odds-api.com/v4/sports/${sportKey}/odds/?apiKey=${key}&regions=eu&markets=h2h&oddsFormat=decimal`,
+            `https://api.the-odds-api.com/v4/sports/${sportKey}/odds/?apiKey=${key}&regions=eu,uk&markets=h2h&oddsFormat=decimal`,
             { next: { revalidate: 3600 } },
         );
         if (!res.ok) return new Map();
@@ -158,8 +165,15 @@ export async function getOdds(competitionType: string): Promise<Map<string, Matc
             const homeTeam = isEkstraklasa ? resolveTeamName(homeTeamApi) : homeTeamApi;
             const awayTeam = isEkstraklasa ? resolveTeamName(awayTeamApi) : awayTeamApi;
 
-            const bookie = event.bookmakers?.[0];
-            const h2h = bookie?.markets?.find((m: { key: string }) => m.key === "h2h");
+            // Scan all bookmakers for first one that has h2h
+            type Outcome = { name: string; price: number };
+            type Market = { key: string; outcomes: Outcome[] };
+            type Bookie = { markets: Market[] };
+            let h2h: Market | undefined;
+            for (const bk of (event.bookmakers ?? []) as Bookie[]) {
+                h2h = bk.markets?.find((m) => m.key === "h2h");
+                if (h2h) break;
+            }
             if (!h2h) continue;
 
             // Outcomes use the original API names
