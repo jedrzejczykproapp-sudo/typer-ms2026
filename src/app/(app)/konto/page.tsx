@@ -102,8 +102,6 @@ export default async function KontoPage({
                 defaultTab={tab}
                 hasTodayMatches={hasTodayMatches}
                 wydarzeniaContent={<WydarzeniaTab groups={groups} userId={user.id} />}
-                zakladyContent={<ZakladyTab userId={user.id} />}
-                grupyContent={<GrupyTab groups={groups} />}
                 statystykiContent={<StatystykiTab userId={user.id} groups={groups} />}
             />
         </div>

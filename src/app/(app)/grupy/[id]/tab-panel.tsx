@@ -3,29 +3,29 @@
 import { useState, type ReactNode } from "react";
 
 const TABS = [
-    { key: "typowania", label: "Typowania" },
-    { key: "tabela", label: "Ranking" },
-    { key: "grupy", label: "Tabela" },
+    { key: "wydarzenia", label: "Wydarzenia" },
+    { key: "tabela",     label: "Ranking"    },
+    { key: "grupy",      label: "Tabela"     },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
 
 interface GroupTabPanelProps {
     defaultTab: string;
-    typowaniaContent: ReactNode;
+    wydarzeniaContent: ReactNode;
     tabelaContent: ReactNode;
     grupyContent: ReactNode;
 }
 
 export function GroupTabPanel({
     defaultTab,
-    typowaniaContent,
+    wydarzeniaContent,
     tabelaContent,
     grupyContent,
 }: GroupTabPanelProps) {
     const isValid = TABS.some((t) => t.key === defaultTab);
     const [activeTab, setActiveTab] = useState<TabKey>(
-        (isValid ? defaultTab : "typowania") as TabKey,
+        (isValid ? defaultTab : "wydarzenia") as TabKey,
     );
 
     function switchTab(tab: TabKey) {
@@ -56,9 +56,9 @@ export function GroupTabPanel({
             </div>
 
             {/* Panels — all pre-rendered server-side, toggled via CSS */}
-            <div className={activeTab !== "typowania" ? "hidden" : undefined}>{typowaniaContent}</div>
-            <div className={activeTab !== "tabela" ? "hidden" : undefined}>{tabelaContent}</div>
-            <div className={activeTab !== "grupy" ? "hidden" : undefined}>{grupyContent}</div>
+            <div className={activeTab !== "wydarzenia" ? "hidden" : undefined}>{wydarzeniaContent}</div>
+            <div className={activeTab !== "tabela"     ? "hidden" : undefined}>{tabelaContent}</div>
+            <div className={activeTab !== "grupy"      ? "hidden" : undefined}>{grupyContent}</div>
         </div>
     );
 }

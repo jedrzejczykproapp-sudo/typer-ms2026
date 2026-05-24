@@ -42,7 +42,7 @@ export default async function GroupPage({
     searchParams: Promise<{ tab?: string }>;
 }) {
     const { id } = await params;
-    const { tab = "typowania" } = await searchParams;
+    const { tab = "wydarzenia" } = await searchParams;
 
     const supabase = await createClient();
     const {
@@ -94,7 +94,7 @@ export default async function GroupPage({
 
                 <GroupTabPanel
                     defaultTab={tab}
-                    typowaniaContent={<TypowaniaTab groupId={id} userId={user!.id} />}
+                    wydarzeniaContent={<TypowaniaTab groupId={id} userId={user!.id} />}
                     tabelaContent={<TabelaTab groupId={id} userId={user!.id} />}
                     grupyContent={<GrupyTab competitionType={group.competition_type ?? "wc_2026"} />}
                 />

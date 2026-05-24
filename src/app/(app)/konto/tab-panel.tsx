@@ -4,8 +4,6 @@ import { useState, type ReactNode } from "react";
 
 const TABS = [
     { key: "wydarzenia", label: "Wydarzenia" },
-    { key: "zaklady",    label: "Zakłady"    },
-    { key: "grupy",      label: "Grupy"      },
     { key: "statystyki", label: "Statystyki" },
 ] as const;
 
@@ -15,8 +13,6 @@ interface KontoTabPanelProps {
     defaultTab: string;
     hasTodayMatches: boolean;
     wydarzeniaContent: ReactNode;
-    zakladyContent: ReactNode;
-    grupyContent: ReactNode;
     statystykiContent: ReactNode;
 }
 
@@ -24,8 +20,6 @@ export function KontoTabPanel({
     defaultTab,
     hasTodayMatches,
     wydarzeniaContent,
-    zakladyContent,
-    grupyContent,
     statystykiContent,
 }: KontoTabPanelProps) {
     const isValid = TABS.some((t) => t.key === defaultTab);
@@ -65,8 +59,6 @@ export function KontoTabPanel({
 
             {/* Panels */}
             <div className={activeTab !== "wydarzenia"  ? "hidden" : undefined}>{wydarzeniaContent}</div>
-            <div className={activeTab !== "zaklady"     ? "hidden" : undefined}>{zakladyContent}</div>
-            <div className={activeTab !== "grupy"       ? "hidden" : undefined}>{grupyContent}</div>
             <div className={activeTab !== "statystyki"  ? "hidden" : undefined}>{statystykiContent}</div>
         </div>
     );
