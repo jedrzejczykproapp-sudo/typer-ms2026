@@ -101,6 +101,21 @@ export default async function ZakladPage({ params }: Props) {
         return s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[łŁ]/g, "l").toLowerCase().trim();
     }
 
+    function expandForOdds(s: string): string {
+        return normForOdds(s)
+            .replace(/\butd\b/g, "united")
+            .replace(/\bman\b(?=\s)/g, "manchester")
+            .replace(/\bspurs\b/g, "tottenham hotspur")
+            .replace(/\bwolves\b/g, "wolverhampton wanderers")
+            .replace(/^leeds$/, "leeds united")
+            .replace(/^newcastle$/, "newcastle united")
+            .replace(/^west ham$/, "west ham united")
+            .replace(/^nottm forest$/, "nottingham forest")
+            .replace(/\b(fc|cf|sc|ac|as|ss|us|rc|rcd|cd|ud|sd|ca|ra|afc|if)\b/g, "")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
     // Enrich fixtures: inject live odds + venue fallback
     const enrichedFixtures = rawFixtures.map((f) => {
         const matchTime = new Date(f.match_date.replace(" ", "T"));
@@ -111,7 +126,12 @@ export default async function ZakladPage({ params }: Props) {
         const oddsMap = oddsByLeague.get(f.league_id);
         const homeKey = normForOdds(f.home_name);
         const awayKey = normForOdds(f.away_name);
-        const liveOdds = oddsMap?.get(`${homeKey}|${awayKey}`) ?? null;
+        const homeExp = expandForOdds(f.home_name);
+        const awayExp = expandForOdds(f.away_name);
+        const liveOdds =
+            oddsMap?.get(`${homeKey}|${awayKey}`) ??
+            oddsMap?.get(`${homeExp}|${awayExp}`) ??
+            null;
 
         return {
             ...f,
