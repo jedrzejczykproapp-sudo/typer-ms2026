@@ -16,6 +16,7 @@ function norm(s: string) {
         .normalize("NFD")
         .replace(/[̀-ͯ]/g, "")   // strip combining diacritics (ą→a, ę→e, ó→o …)
         .replace(/[łŁ]/g, "l")    // ł/Ł don't decompose under NFD, handle manually
+        .replace(/\s*&\s*/g, " and ")  // "Brighton & Hove Albion" == "Brighton and Hove Albion"
         .toLowerCase()
         .trim();
 }
@@ -114,11 +115,17 @@ function expandName(s: string): string {
         .replace(/\butd\b/g, "united")
         .replace(/\bman\b(?=\s)/g, "manchester")
         .replace(/\bspurs\b/g, "tottenham hotspur")
+        .replace(/^tottenham$/, "tottenham hotspur")
         .replace(/\bwolves\b/g, "wolverhampton wanderers")
+        .replace(/\bwolverhampton\b(?!\s+wanderers)/, "wolverhampton wanderers")
+        .replace(/^brighton$/, "brighton and hove albion")
         .replace(/^leeds$/, "leeds united")
         .replace(/^newcastle$/, "newcastle united")
         .replace(/^west ham$/, "west ham united")
         .replace(/^nottm forest$/, "nottingham forest")
+        .replace(/^nottingham$/, "nottingham forest")
+        .replace(/^leicester$/, "leicester city")
+        .replace(/^ipswich$/, "ipswich town")
         .replace(/\b(fc|cf|sc|ac|as|ss|us|rc|rcd|cd|ud|sd|ca|ra|afc|if)\b/g, "")
         .replace(/\s+/g, " ")
         .trim();

@@ -139,6 +139,7 @@ function normKey(s: string) {
         .normalize("NFD")
         .replace(/[̀-ͯ]/g, "")
         .replace(/[łŁ]/g, "l")
+        .replace(/\s*&\s*/g, " and ")
         .toLowerCase()
         .trim();
 }

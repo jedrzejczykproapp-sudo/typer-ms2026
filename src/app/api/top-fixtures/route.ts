@@ -30,7 +30,13 @@ export interface Fixture {
 }
 
 function norm(s: string) {
-    return s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[łŁ]/g, "l").toLowerCase().trim();
+    return s
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "")
+        .replace(/[łŁ]/g, "l")
+        .replace(/\s*&\s*/g, " and ")
+        .toLowerCase()
+        .trim();
 }
 
 // Expand abbreviations and strip noise so "Manchester Utd" == "Manchester United"
@@ -40,12 +46,16 @@ function expandName(s: string): string {
         .replace(/\butd\b/g, "united")
         .replace(/\bman\b(?=\s)/g, "manchester")
         .replace(/\bspurs\b/g, "tottenham hotspur")
+        .replace(/^tottenham$/, "tottenham hotspur")
         .replace(/\bwolves\b/g, "wolverhampton wanderers")
         .replace(/\bwolverhampton\b(?!\s+wanderers)/g, "wolverhampton wanderers")
         // bare city names that lack "United" / "City" suffix in apifootball
+        .replace(/^brighton$/, "brighton and hove albion")
         .replace(/^leeds$/, "leeds united")
         .replace(/^newcastle$/, "newcastle united")
         .replace(/^west ham$/, "west ham united")
+        .replace(/^leicester$/, "leicester city")
+        .replace(/^ipswich$/, "ipswich town")
         .replace(/^norwich$/, "norwich city")
         .replace(/^sheffield utd$/, "sheffield united")
         .replace(/^sheffield wed$/, "sheffield wednesday")
