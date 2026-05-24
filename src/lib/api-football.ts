@@ -44,8 +44,9 @@ function mapGoalInfo(info: string): string {
 }
 
 function parseStat(val: string | null | undefined): number | null {
-    if (!val) return null;
-    return parseInt(val.replace("%", "").trim()) || null;
+    if (val === null || val === undefined || val === "") return null;
+    const n = parseInt(val.replace("%", "").trim());
+    return isNaN(n) ? null : n;
 }
 
 function mapStatus(match_live: string, match_status: string): "upcoming" | "live" | "finished" {
@@ -111,6 +112,13 @@ export interface SyncedStats {
     away_corners: number | null;
     home_fouls: number | null;
     away_fouls: number | null;
+    // optional — not stored in DB, only used for in-memory zaklad display
+    home_attacks?: number | null;
+    away_attacks?: number | null;
+    home_dangerous_attacks?: number | null;
+    away_dangerous_attacks?: number | null;
+    home_yellow_cards?: number | null;
+    away_yellow_cards?: number | null;
 }
 
 export interface SyncResult {
@@ -256,8 +264,13 @@ function parseMatch(match: ApiMatch, knownId: number | null): SyncResult {
     // ── Parse statistics ──────────────────────────────────────────────────────
     const statistics: ApiStatItem[] = Array.isArray(match.statistics) ? match.statistics : [];
 
+    // Use last occurrence — apifootball sometimes sends duplicate entries (e.g. Ball Possession)
+    // where the first entry is 0%/0% and the correct value is the last one.
     const getStat = (name: string, side: "home" | "away") => {
-        const st = statistics.find((s) => s.type === name);
+        let st: ApiStatItem | undefined;
+        for (let i = statistics.length - 1; i >= 0; i--) {
+            if (statistics[i].type === name) { st = statistics[i]; break; }
+        }
         return st ? parseStat(side === "home" ? st.home : st.away) : null;
     };
 
@@ -274,6 +287,12 @@ function parseMatch(match: ApiMatch, knownId: number | null): SyncResult {
               away_corners: getStat("Corners", "away"),
               home_fouls: getStat("Fouls", "home"),
               away_fouls: getStat("Fouls", "away"),
+              home_attacks: getStat("Attacks", "home"),
+              away_attacks: getStat("Attacks", "away"),
+              home_dangerous_attacks: getStat("Dangerous Attacks", "home"),
+              away_dangerous_attacks: getStat("Dangerous Attacks", "away"),
+              home_yellow_cards: getStat("Yellow Cards", "home"),
+              away_yellow_cards: getStat("Yellow Cards", "away"),
           }
         : null;
 

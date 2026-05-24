@@ -239,9 +239,12 @@ function MatchDetails({ events, stats, homeName, awayName, loading }: {
                         { label: "Posiadanie", home: stats.home_possession, away: stats.away_possession, unit: "%" },
                         { label: "Strzały", home: stats.home_shots, away: stats.away_shots },
                         { label: "Celne", home: stats.home_shots_on_target, away: stats.away_shots_on_target },
+                        { label: "Ataki", home: stats.home_attacks ?? null, away: stats.away_attacks ?? null },
+                        { label: "Groźne ataki", home: stats.home_dangerous_attacks ?? null, away: stats.away_dangerous_attacks ?? null },
                         { label: "Rzuty rożne", home: stats.home_corners, away: stats.away_corners },
                         { label: "Faule", home: stats.home_fouls, away: stats.away_fouls },
-                    ] as const)
+                        { label: "Żółte kartki", home: stats.home_yellow_cards ?? null, away: stats.away_yellow_cards ?? null },
+                    ])
                         .filter((s) => s.home !== null || s.away !== null)
                         .map((s) => <StatBar key={s.label} {...s} />)
                     }
