@@ -22,6 +22,7 @@ interface ZakladFixture {
     odds_home: number | null;
     odds_draw: number | null;
     odds_away: number | null;
+    venue: string | null;
 }
 
 interface Props {
@@ -238,6 +239,13 @@ export function ZakladFixtureCard({ fixture, zakladId, myPrediction, myPoints, o
                 </div>
                 <span className="text-right text-xs text-tertiary">{formatMatchDate(fixture.match_date)}</span>
             </div>
+
+            {/* Venue */}
+            {fixture.venue && (
+                <p className="text-center text-[11px] font-medium uppercase tracking-wider text-quaternary">
+                    {fixture.venue}
+                </p>
+            )}
 
             {/* Score row */}
             <div className="flex items-center gap-2">

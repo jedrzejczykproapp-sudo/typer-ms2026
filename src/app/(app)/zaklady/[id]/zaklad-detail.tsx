@@ -25,6 +25,7 @@ interface ZakladFixture {
     odds_home: number | null;
     odds_draw: number | null;
     odds_away: number | null;
+    venue: string | null;
 }
 
 interface ZakladMember {

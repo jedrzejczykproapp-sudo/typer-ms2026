@@ -21,6 +21,10 @@ export interface Fixture {
     status: string;
     home_score: string;
     away_score: string;
+    odds_home: number | null;
+    odds_draw: number | null;
+    odds_away: number | null;
+    venue: string | null;
 }
 
 function norm(s: string) {
@@ -86,6 +90,10 @@ export async function GET() {
                         status: e.match_status ?? "",
                         home_score: e.match_hometeam_score ?? "",
                         away_score: e.match_awayteam_score ?? "",
+                        odds_home: parseFloat(e.odd_home) || null,
+                        odds_draw: parseFloat(e.odd_draw) || null,
+                        odds_away: parseFloat(e.odd_away) || null,
+                        venue: e.match_stadium || null,
                     });
                 }
             }

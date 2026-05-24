@@ -23,7 +23,7 @@ export default async function ZakladPage({ params }: Props) {
                 match_date, home_name, home_badge, home_position,
                 away_name, away_badge, away_position,
                 home_score, away_score, match_status,
-                odds_home, odds_draw, odds_away
+                odds_home, odds_draw, odds_away, venue
             ),
             zaklad_members(user_id, joined_at)
         `)

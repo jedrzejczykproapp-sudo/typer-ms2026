@@ -38,6 +38,10 @@ export async function POST(req: Request) {
         home_score: f.home_score ?? "",
         away_score: f.away_score ?? "",
         match_status: f.status ?? "upcoming",
+        odds_home: f.odds_home ?? null,
+        odds_draw: f.odds_draw ?? null,
+        odds_away: f.odds_away ?? null,
+        venue: f.venue ?? null,
     }));
 
     const { error: fErr } = await supabase.from("zaklad_fixtures").insert(fixtureRows);
