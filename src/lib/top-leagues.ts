@@ -7,6 +7,7 @@ export interface LeagueConfig {
 }
 
 export const TOP_LEAGUES: LeagueConfig[] = [
+    { id: "28",  name: "MŚ 2026",         country: "World",   flag: "🌍", oddsKey: "soccer_fifa_world_cup" },
     { id: "152", name: "Premier League",  country: "England", flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", oddsKey: "soccer_england_premier_league" },
     { id: "302", name: "La Liga",         country: "Spain",   flag: "🇪🇸", oddsKey: "soccer_spain_la_liga" },
     { id: "207", name: "Serie A",         country: "Italy",   flag: "🇮🇹", oddsKey: "soccer_italy_serie_a" },
